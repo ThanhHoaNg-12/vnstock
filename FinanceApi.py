@@ -104,7 +104,8 @@ class FinanceAPI:
         """
         finance = Finance(symbol=symbol, source="vci")
         annual_data = finance.ratio(period="annual", lang=self._language)
-        return add_year_and_quarter_to_dataframe(annual_data)
+        annual_data['ticker'] = symbol
+        return annual_data
 
     @staticmethod
     def _get_company_price_history_data(symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
@@ -116,7 +117,9 @@ class FinanceAPI:
         :return: Price history data as a DataFrame
         """
         quote = Quote(symbol=symbol, source="vci")
-        return quote.history(start=start_date, end=end_date)
+        price_history =quote.history(start=start_date, end=end_date)
+        price_history['ticker'] = symbol
+        return price_history
 
     def build_dict(self, ticker: str, start_date: str, end_date: str) -> dict[str, pd.DataFrame | str]:
         """
