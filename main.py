@@ -49,6 +49,7 @@ def call_api(api_client: FinanceAPI, stock: str, start_date: str, end_date: str)
         stock_data = api_client.build_dict(stock, start_date, end_date)
     except Exception as e:
         logger.error(e)
+        return {}
     else:
         return stock_data
 def get_banks_listings() -> pd.DataFrame:
