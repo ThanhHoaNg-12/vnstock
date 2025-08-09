@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from vnstock_data import Finance, Quote, Company
+from vnstock import Finance, Quote, Company
 import time
 import logging
 import pandas as pd
@@ -44,12 +44,15 @@ def add_year_and_quarter_to_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
     # This creates a new DataFrame with 'Year' and 'Quarter' columns
     df[['Year', 'Quarter']] = df.index.to_series().apply(extract_year_quarter)
     # Remove Report Type column
-    df = df.drop('report_period', axis=1)
+    if 'report_period' in df.columns:
+        df = df.drop('report_period', axis=1)
+    # Rename Year and Quarter columns
     return df
 
 class FinanceAPI:
     def __init__(self):
-        self._language = 'en'
+        self._language = 'vi'
+        self._source = 'TCBS'
 
     @staticmethod
     def _get_company_profile(symbol: str) -> pd.DataFrame:
@@ -59,7 +62,7 @@ class FinanceAPI:
         :param symbol: Ticker symbol of the company
         :return: Company profile data as a DataFrame
         """
-        company = Company(symbol=symbol, source="vci")
+        company = Company(symbol=symbol, source='vci')
         return company.overview()
 
     def _get_company_cash_flow(self, symbol: str) -> pd.DataFrame:
@@ -69,8 +72,8 @@ class FinanceAPI:
         :param symbol: Ticker symbol of the company
         :return: Merged cash flow data as a DataFrame
         """
-        finance = Finance(symbol=symbol, source="vci")
-        annual_data = finance.cash_flow(period="annual", lang=self._language)
+        finance = Finance(symbol=symbol, source=self._source)
+        annual_data = finance.cash_flow(period="year", lang=self._language)
         return add_year_and_quarter_to_dataframe(annual_data)
 
     def _get_company_balance_sheet(self, symbol: str) -> pd.DataFrame:
@@ -80,8 +83,9 @@ class FinanceAPI:
         :param symbol: Ticker symbol of the company
         :return: Merged balance sheet data as a DataFrame
         """
-        finance = Finance(symbol=symbol, source="vci")
-        annual_data = finance.balance_sheet(period="annual", lang=self._language)
+        finance = Finance(symbol=symbol, source=self._source)
+        annual_data = finance.balance_sheet(period="year", lang=self._language)
+        # Remove all columns that have 0 in all rows
         return add_year_and_quarter_to_dataframe(annual_data)
 
     def _get_company_income_statement(self, symbol: str) -> pd.DataFrame:
@@ -91,8 +95,9 @@ class FinanceAPI:
         :param symbol: Ticker symbol of the company
         :return: Merged income statement data as a DataFrame
         """
-        finance = Finance(symbol=symbol, source="vci")
-        annual_data = finance.income_statement(period="annual", lang=self._language)
+        finance = Finance(symbol=symbol, source=self._source)
+        annual_data = finance.income_statement(period="year", lang=self._language)
+        # Remove all columns that have 0 in all rows
         return add_year_and_quarter_to_dataframe(annual_data)
 
     def _get_company_ratio(self, symbol: str) -> pd.DataFrame:
@@ -103,7 +108,7 @@ class FinanceAPI:
         :return: Merged ratio data as a DataFrame
         """
         finance = Finance(symbol=symbol, source="vci")
-        annual_data = finance.ratio(period="annual", lang=self._language)
+        annual_data = finance.ratio(period="year", lang=self._language)
         annual_data['ticker'] = symbol
         return annual_data
 
@@ -116,7 +121,7 @@ class FinanceAPI:
         :param end_date: End date
         :return: Price history data as a DataFrame
         """
-        quote = Quote(symbol=symbol, source="vci")
+        quote = Quote(symbol=symbol)
         price_history =quote.history(start=start_date, end=end_date)
         price_history['ticker'] = symbol
         return price_history

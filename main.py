@@ -17,7 +17,7 @@ logger.setLevel("INFO")
 def main():
     logger.info("Starting...")
     # Get all listing from vnstock with source 'vci'
-    listings_df = get_banks_listings()
+    listings_df = get_banks_listings(True)
     logger.info(f"Found {len(listings_df)} banks")
 
     stock_data_folder = Path.cwd() / "StockData"
