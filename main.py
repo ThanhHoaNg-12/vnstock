@@ -1,7 +1,7 @@
 from pathlib import Path
 import logging
 from DataOrchestrator import DataOrchestrator
-from utility import get_banks_listings
+from utility import get_banks_listings, parse_boolean
 import os
 logging.basicConfig(
     format="{asctime} - {levelname} - {message}",
@@ -18,7 +18,7 @@ logger.setLevel("INFO")
 def main():
     logger.info("Starting...")
     # Get all listing from vnstock with source 'vci'
-    listings_df = get_banks_listings(os.getenv("TESTING") == "True")
+    listings_df = get_banks_listings(parse_boolean(os.getenv("TESTING")))
     logger.info(f"Found {len(listings_df)} banks")
 
     stock_data_folder = Path.cwd() / "StockData"

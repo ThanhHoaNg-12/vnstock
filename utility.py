@@ -63,3 +63,5 @@ def get_banks_listings(testing: bool = False) -> pd.DataFrame:
         listings_df = listings_df[listings_df['icb_name3'] == 'Ngân hàng']
 
     return listings_df
+def parse_boolean(value: str) -> bool:
+    return value in ['True', 'true', '1']
