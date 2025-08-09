@@ -47,15 +47,19 @@ def call_api(api_client: FinanceAPI, stock: str, start_date: str, end_date: str)
         return {}
     else:
         return stock_data
-def get_banks_listings() -> pd.DataFrame:
+def get_banks_listings(testing: bool = False) -> pd.DataFrame:
     """
     Get all listing from vnstock with source 'vci
+    :param testing: If True, only return 2 stocks
     :return: pd.DataFrame
     """
     listing = Listing()
 
     listings_df = listing.symbols_by_industries()
 
-    listings_df = listings_df[listings_df['symbol'] == 'ACB']
+    if testing:
+        listings_df = listings_df[listings_df['symbol'].isin(['ACB', 'MBB'])]
+    else:
+        listings_df = listings_df[listings_df['icb_name3'] == 'Ngân hàng']
 
     return listings_df
