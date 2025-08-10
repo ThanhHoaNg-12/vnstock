@@ -1,9 +1,10 @@
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from vnstock import Finance, Quote, Company
+from vnai.beam.quota import RateLimitExceeded
 import time
 import logging
 import pandas as pd
-from typing import Any, Optional
+from typing import Any
 
 logging.basicConfig(
     format="{asctime} - {levelname} - {message}",
@@ -56,25 +57,23 @@ class FinanceAPI:
     def __init__(self):
         self._language = 'en'
         self._source = 'TCBS'
-        self._response: dict[str, pd.DataFrame | str] = {}
 
-    def _get_company_profile(self, symbol: str, name: str) -> None:
+    @staticmethod
+    def _get_company_profile(symbol: str) -> pd.DataFrame:
         """
         Get company profile data
 
         :param symbol: Ticker symbol of the company
-        :param name: Name of the function
         :return: Company profile data as a DataFrame
         """
         company = Company(symbol=symbol, source="vci")
-        self._response[name] = company.overview()
+        return company.overview()
 
-    def _get_company_cash_flow(self, symbol: str, name: str) -> None:
+    def _get_company_cash_flow(self, symbol: str) -> pd.DataFrame:
         """
         Retrieve and merge the quarterly and annual cash flow data for a given company symbol.
 
         :param symbol: Ticker symbol of the company
-        :param name: Name of the function
         :return: Merged cash flow data as a DataFrame
         """
         finance = Finance(symbol=symbol, source=self._source)
@@ -84,14 +83,13 @@ class FinanceAPI:
         quarterly_data['ticker'] = symbol
         annual_data = transform_df(annual_data)
         quarterly_data = transform_df(quarterly_data)
-        self._response[name] = pd.concat([annual_data, quarterly_data])
+        return pd.concat([annual_data, quarterly_data])
 
-    def _get_company_balance_sheet(self, symbol: str, name: str) -> None:
+    def _get_company_balance_sheet(self, symbol: str) -> pd.DataFrame:
         """
         Retrieve and merge the quarterly and annual balance sheet data for a given company symbol.
 
         :param symbol: Ticker symbol of the company
-        :param name: Name of the function
         :return: Merged balance sheet data as a DataFrame
         """
         finance = Finance(symbol=symbol, source=self._source)
@@ -102,14 +100,13 @@ class FinanceAPI:
         quarterly_data = finance.balance_sheet(period="quarter", lang=self._language)
         quarterly_data['ticker'] = symbol
         quarterly_data = transform_df(quarterly_data)
-        self._response[name] = pd.concat([annual_data, quarterly_data])
+        return pd.concat([annual_data, quarterly_data])
 
-    def _get_company_income_statement(self, symbol: str, name: str) -> None:
+    def _get_company_income_statement(self, symbol: str) -> pd.DataFrame:
         """
         Retrieve and merge the quarterly and annual income statement data for a given company symbol.
 
         :param symbol: Ticker symbol of the company
-        :param name: Name of the function
         :return: Merged income statement data as a DataFrame
         """
         finance = Finance(symbol=symbol, source=self._source)
@@ -120,14 +117,13 @@ class FinanceAPI:
         quarterly_data = finance.income_statement(period="quarter", lang=self._language)
         quarterly_data['ticker'] = symbol
         quarterly_data = transform_df(quarterly_data)
-        self._response[name] = pd.concat([annual_data, quarterly_data])
+        return pd.concat([annual_data, quarterly_data])
 
-    def _get_company_ratio(self, symbol: str, name: str) -> None:
+    def _get_company_ratio(self, symbol: str) -> pd.DataFrame:
         """
         Retrieve and merge the quarterly and annual ratio data for a given company symbol.
 
         :param symbol: Ticker symbol of the company
-        :param name: Name of the function
         :return: Merged ratio data as a DataFrame
         """
         finance = Finance(symbol=symbol, source=self._source)
@@ -135,24 +131,24 @@ class FinanceAPI:
         quarterly_data = finance.ratio(period="quarter", lang=self._language)
         annual_data = transform_df(annual_data)
         quarterly_data = transform_df(quarterly_data)
-        self._response[name] = pd.concat([annual_data, quarterly_data])
+        return pd.concat([annual_data, quarterly_data])
 
 
-    def _get_company_price_history_data(self, symbol: str, start_date: str, end_date: str, name: str) -> None:
+    @staticmethod
+    def _get_company_price_history_data(symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
         """
         Get price history data
         :param symbol: Ticker symbol
         :param start_date: Start date
         :param end_date: End date
-        :param name: Name of the function
         :return: Price history data as a DataFrame
         """
         quote = Quote(symbol=symbol)
         price_history =quote.history(start=start_date, end=end_date)
         price_history['ticker'] = symbol
-        self._response[name] = price_history
+        return price_history
 
-    def build_dict(self, ticker: str, start_date: str, end_date: str) -> dict[str, pd.DataFrame | str]:
+    def build_dict(self, ticker: str, start_date: str, end_date: str) -> dict[str, Any]:
         """
         Build a dictionary of dataframes by calling the API from vnstock
         :param ticker: Ticker symbol
@@ -160,47 +156,44 @@ class FinanceAPI:
         :param end_date: End date of the price history
         :return: A dictionary of dataframes
         """
-        function_objects = [
-            {"name": "company_profile", "function": self._get_company_profile, "kwargs": {"symbol": ticker}},
-            {"name": "cash_flow", "function": self._get_company_cash_flow, "kwargs": {"symbol": ticker}},
-            {"name": "balance_sheet", "function": self._get_company_balance_sheet, "kwargs": {"symbol": ticker}},
-            {"name": "income_statement", "function": self._get_company_income_statement, "kwargs": {"symbol": ticker}},
-            {"name": "ratio", "function": self._get_company_ratio, "kwargs": {"symbol": ticker}},
-            {"name": "daily_chart", "function": self._get_company_price_history_data,
-             "kwargs": {"symbol": ticker, "start_date": start_date, "end_date": end_date}},
-        ]
+        functions_to_call = {
+            "company_profile": (self._get_company_profile, {"symbol": ticker}),
+            "cash_flow": (self._get_company_cash_flow, {"symbol": ticker}),
+            "balance_sheet": (self._get_company_balance_sheet, {"symbol": ticker}),
+            "income_statement": (self._get_company_income_statement, {"symbol": ticker}),
+            "ratio": (self._get_company_ratio, {"symbol": ticker}),
+            "daily_chart": (self._get_company_price_history_data, {"symbol": ticker, "start_date": start_date, "end_date": end_date})
+        }
 
-        self._response = {"ticker": ticker}
+        response = {"ticker": ticker}
 
-        # for function_object in function_objects:
-        #     _fixed_delay_api_call(function_object)
 
-        # Use ThreadPoolExecutor to make API calls in parallel
-        with ThreadPoolExecutor(max_workers=len(function_objects)) as executor:
-            executor.map(_fixed_delay_api_call, function_objects)
-        return self._response
+        for key, (func, kwargs) in functions_to_call.items():
+            response[key] = _fixed_delay_api_call(func, **kwargs)
+        return response
 
-def _fixed_delay_api_call(function_object: dict[str, Any]) -> Optional[pd.DataFrame]:
+def _fixed_delay_api_call(function, **kwargs) -> pd.DataFrame:
     """Make API calls and pause the program
     when API limits has been reached.
-    :param function_object: A dictionary consisting of function and kwargs
+    :param function: The function to call
+    :param kwargs: Keyword arguments for the function
     :returns: A pandas DataFrame or None if an error occurs
     """
     start = time.perf_counter() + 1
-    function = function_object['function']
-    kwargs = function_object['kwargs']
-    kwargs['name'] = function_object['name']
     try:
-        return function(**kwargs)
+        result = function(**kwargs)
+    except RateLimitExceeded as e:
+        logger.error(f"Error calling API with {function=}, {kwargs=}: {e}")
+        time.sleep(e.retry_after)
+        result = function(**kwargs)
     except Exception as e:
         logger.error(f"Error calling API with {function=}, {kwargs=}: {e}")
         time.sleep(60)
-        try:
-            return function(**kwargs)
-        except Exception as e2:
-            logger.error(f"Error on retry for {function=}, {kwargs=}: {e2}")
-            return None
-    finally:
+        result = function(**kwargs)
+    else:
         diff = start - time.perf_counter()
         if diff > 0:
             time.sleep(diff + 1)
+        else:
+            time.sleep(1)
+    return result

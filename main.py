@@ -26,7 +26,7 @@ def main():
     if not stock_data_folder.exists():
         stock_data_folder.mkdir()
     logger.info("Downloading data...")
-    data_orchestrator = DataOrchestrator(listing_df=listings_df, data_path=stock_data_folder)
+    data_orchestrator = DataOrchestrator(listing_df=listings_df, data_path=stock_data_folder, max_workers=1)
     data_orchestrator.run()
 
     logger.info("Done")
