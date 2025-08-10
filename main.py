@@ -1,8 +1,10 @@
 from pathlib import Path
 import logging
-from DataOrchestrator import DataOrchestrator
-from utility import get_banks_listings, parse_boolean
+from dotenv import load_dotenv, find_dotenv
+from DataOrchestrator.DataOrchestrator import DataOrchestrator
+from util.utility import get_banks_listings, parse_boolean
 import os
+
 logging.basicConfig(
     format="{asctime} - {levelname} - {message}",
     style="{",
@@ -12,7 +14,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.setLevel("INFO")
 
-
+load_dotenv(find_dotenv())
 
 
 def main():
@@ -26,10 +28,12 @@ def main():
     if not stock_data_folder.exists():
         stock_data_folder.mkdir()
     logger.info("Downloading data...")
-    data_orchestrator = DataOrchestrator(listing_df=listings_df, data_path=stock_data_folder, max_workers=1)
+    data_orchestrator = DataOrchestrator(listing_df=listings_df, data_path=stock_data_folder,
+                                         db_url=os.getenv("DATABASE_URL"), db_schema_file=Path.cwd() / "schema.sql",)
     data_orchestrator.run()
 
     logger.info("Done")
+
 
 if __name__ == '__main__':
     main()

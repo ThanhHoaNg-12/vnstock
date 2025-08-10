@@ -2,7 +2,7 @@ from vnstock import Listing
 from pathlib import Path
 import pandas as pd
 import logging
-from FinanceApi import FinanceAPI
+from FinanceApi.FinanceApi import FinanceAPI
 logging.basicConfig(
     format="{asctime} - {levelname} - {message}",
     style="{",

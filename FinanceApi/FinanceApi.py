@@ -1,4 +1,3 @@
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from vnstock import Finance, Quote, Company
 from vnai.beam.quota import RateLimitExceeded
 import time
@@ -23,7 +22,12 @@ def transform_df(dataframe: pd.DataFrame) -> pd.DataFrame:
     :return: New dataframe with 'year' and 'quarter' columns
     """
     df = dataframe.copy()
-    if 'Year' in df.columns and 'Quarter' in df.columns:
+    drop_columns = ['report_period', 'year', 'quarter']
+    for col in drop_columns:
+        if col in df.columns:
+            df = df.drop(col, axis=1)
+
+    if 'year' in df.columns and 'quarter' in df.columns:
         return df
 
     # Helper function to process a single index label
@@ -43,14 +47,50 @@ def transform_df(dataframe: pd.DataFrame) -> pd.DataFrame:
 
     # Apply the helper function to the index
     # This creates a new DataFrame with 'Year' and 'Quarter' columns
-    df[['Year', 'Quarter']] = df.index.to_series().apply(extract_year_quarter)
+    df[['year', 'quarter']] = df.index.to_series().apply(extract_year_quarter)
     # Remove Report Type column
 
-    drop_columns = ['report_period', 'year', 'quarter']
-    for col in drop_columns:
-        if col in df.columns:
-            df = df.drop(col, axis=1)
     # Rename Year and Quarter columns
+    return df
+
+def clean_dataframe(df: pd.DataFrame, table_schema: list[str], primary_key_cols: list[str]) -> pd.DataFrame:
+    """
+    Cleans a DataFrame by:
+    1. Ensuring it has all columns defined in the table schema, adding missing ones with None values.
+    2. Removing duplicate rows based on the primary key columns (ticker, year, quarter).
+
+    Args:
+        df (pd.DataFrame): The input DataFrame from the brokerage API.
+        table_schema (list): A list of column names for the target database table.
+        primary_key_cols (list): A list of column names that form the primary key for the table.
+
+    Returns:
+        pd.DataFrame: The cleaned DataFrame.
+    """
+    # 1. Handle missing columns
+    # Find columns in the schema that are not in the DataFrame
+    missing_columns = [col for col in table_schema if col not in df.columns]
+
+    # Add the missing columns to the DataFrame and fill with None
+    for col in missing_columns:
+        df[col] = None
+        logger.info(f"Added missing column: '{col}'")
+
+    # Reorder the columns to match the schema
+    df = df[table_schema]
+
+    # 2. Handle duplicate rows
+    # Check if the primary key columns exist in the DataFrame
+    if all(col in df.columns for col in primary_key_cols):
+        # Drop duplicates, keeping the first occurrence
+        initial_row_count = len(df)
+        df.drop_duplicates(subset=primary_key_cols, keep='first', inplace=True)
+        dropped_rows = initial_row_count - len(df)
+        if dropped_rows > 0:
+            logger.info(f"Removed {dropped_rows} duplicate rows based on the primary key.")
+    else:
+        logger.info("Warning: Primary key columns (ticker, year, quarter) not found in the DataFrame. Skipping duplicate removal.")
+
     return df
 
 class FinanceAPI:
@@ -67,7 +107,10 @@ class FinanceAPI:
         :return: Company profile data as a DataFrame
         """
         company = Company(symbol=symbol, source="vci")
-        return company.overview()
+        # Rename symbol to ticker
+        company_df = company.overview()
+        company_df = company_df.rename(columns={'symbol': 'ticker'})
+        return company_df
 
     def _get_company_cash_flow(self, symbol: str) -> pd.DataFrame:
         """
@@ -129,6 +172,8 @@ class FinanceAPI:
         finance = Finance(symbol=symbol, source=self._source)
         annual_data = finance.ratio(period="year", lang=self._language)
         quarterly_data = finance.ratio(period="quarter", lang=self._language)
+        annual_data['ticker'] = symbol
+        quarterly_data['ticker'] = symbol
         annual_data = transform_df(annual_data)
         quarterly_data = transform_df(quarterly_data)
         return pd.concat([annual_data, quarterly_data])
@@ -161,11 +206,11 @@ class FinanceAPI:
             "cash_flow": (self._get_company_cash_flow, {"symbol": ticker}),
             "balance_sheet": (self._get_company_balance_sheet, {"symbol": ticker}),
             "income_statement": (self._get_company_income_statement, {"symbol": ticker}),
-            "ratio": (self._get_company_ratio, {"symbol": ticker}),
+            "ratios": (self._get_company_ratio, {"symbol": ticker}),
             "daily_chart": (self._get_company_price_history_data, {"symbol": ticker, "start_date": start_date, "end_date": end_date})
         }
 
-        response = {"ticker": ticker}
+        response: dict[str, Any] = {"ticker": ticker}
 
 
         for key, (func, kwargs) in functions_to_call.items():
