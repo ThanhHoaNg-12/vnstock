@@ -78,10 +78,8 @@ class DataOrchestrator:
             logger.error(f"Failed to fetch data for {ticker}: {e}")
             return {}
 
-    def _dump_data_to_db(self, file_paths: list[Path]):
-        for file_path in file_paths:
-            self._db_interface.dump_data_to_db(file_path.stem.split('_', maxsplit=1)[1], file_path)
-        self._db_interface.close_connection()
+    def _dump_data_to_db(self, table_name, df: pd.DataFrame):
+        self._db_interface.dump_data_to_db(table_name, df)
 
     def run(self):
         """
@@ -116,18 +114,20 @@ class DataOrchestrator:
         #     for file in folder.iterdir():
         #         file_paths.append(file)
 
+        logger.info("Data writing process started.")
         for data in stock_data_list:
             ticker = data['ticker']
             symbol_folder_path = self._cur_path / ticker
-            for k, v in data.items():
-                if isinstance(v, pd.DataFrame):
+            for k in sorted(data.keys(), key=lambda x: 'company_profile' in x, reverse=True):
+                df = data[k]
+                if isinstance(df, pd.DataFrame):
                     file_path = symbol_folder_path / f"{ticker}_{k}.csv"
                     file_paths.append(file_path)
-                    write_data_to_file(file_path, v)
-        logger.info("Data writing process started.")
+                    write_data_to_file(file_path, df)
+                    self._dump_data_to_db(k, df)
         # Since all tables refer to the ticker in company_profile, we have to dump company_profile first
         # Sort the file_paths by this criteria: The file names that have "company_profile" in the name will be dumped first
 
-        file_paths.sort(key=lambda x: "company_profile" in x.name, reverse=True)
-        self._dump_data_to_db(file_paths)
         logger.info("Data writing process complete.")
+
+        self._db_interface.close_connection()

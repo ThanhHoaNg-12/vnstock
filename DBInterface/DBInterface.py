@@ -1,6 +1,8 @@
 import psycopg
 from psycopg.connection import Connection
 from psycopg import sql
+from io import StringIO
+import pandas as pd
 from pathlib import Path
 import logging
 
@@ -27,7 +29,7 @@ class DBInterface:
             self._conn.execute(f.read().encode("utf-8"))
             self._conn.commit()
 
-    def dump_data_to_db(self, table_name: str, df_location: Path):
+    def dump_data_to_db(self, table_name: str, df: pd.DataFrame):
         """
         Dump a pandas DataFrame from a csv file to a PostgreSQL table.
 
@@ -35,22 +37,24 @@ class DBInterface:
         ----------
         table_name: str
             The name of the PostgreSQL table to which the data should be dumped.
-        df_location: Path
-            The path to the csv file containing the data to be dumped.
-
+        df: DataFrame
+            the pandas DataFrame to be dumped to the PostgreSQL table.
         Notes
         -----
         The csv file must have the same column order as the table. The csv file must have a header row.
         This function commits the transaction after dumping the data.
         """
-        df_location = str(df_location)
-        try:
-            self._conn.execute(sql.SQL("COPY {} FROM {} DELIMITER ',' CSV HEADER").format(sql.Identifier(table_name), sql.Literal(df_location)))
-        except Exception as e:
-            self._logger.error(e)
-            self._conn.rollback()
-        else:
+        with self._conn.cursor() as cur:
+            with cur.copy(sql.SQL("COPY {} FROM STDIN WITH CSV HEADER DELIMITER ','").format(
+                sql.Identifier(table_name)
+            )) as copy:
+                # Convert DataFrame to StringIO
+                csv_buffer = StringIO()
+                df.to_csv(csv_buffer, sep=",", index=False)
+                csv_buffer.seek(0)
+                copy.write(csv_buffer.read())
             self._conn.commit()
+
 
     def close_connection(self):
         self._conn.close()
