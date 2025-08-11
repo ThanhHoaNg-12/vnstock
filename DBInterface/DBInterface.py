@@ -1,4 +1,6 @@
 import psycopg
+from psycopg.connection import Connection
+from psycopg import sql
 from pathlib import Path
 import logging
 
@@ -15,10 +17,11 @@ class DBInterface:
         self._logger = logging.getLogger("psycopg")
         self._logger.setLevel("DEBUG")
         self._db_url = db_url
-        self._conn: psycopg.connection.Connection = psycopg.connect(self._db_url)
+        self._conn: Connection = psycopg.connect(self._db_url)
         self._create_table(db_schema_file)
 
     def _create_table(self, db_schema_file: Path):
+        self._logger.info(f"Creating tables from {db_schema_file=}")
         with open(db_schema_file, "r") as f:
             # Pass in bytes of the file
             self._conn.execute(f.read().encode("utf-8"))
@@ -42,7 +45,7 @@ class DBInterface:
         """
         df_location = str(df_location)
         try:
-            self._conn.execute("COPY %s FROM '%s' DELIMITER ',' CSV HEADER" % (table_name, df_location))
+            self._conn.execute(sql.SQL("COPY {} FROM {} DELIMITER ',' CSV HEADER").format(sql.Identifier(table_name), sql.Literal(df_location)))
         except Exception as e:
             self._logger.error(e)
             self._conn.rollback()

@@ -4,6 +4,7 @@ import time
 import logging
 import pandas as pd
 from typing import Any
+from util.utility import transform_df, clean_dataframe
 
 logging.basicConfig(
     format="{asctime} - {levelname} - {message}",
@@ -15,88 +16,13 @@ logger = logging.getLogger(__name__)
 logger.setLevel("INFO")
 
 
-def transform_df(dataframe: pd.DataFrame) -> pd.DataFrame:
-    """
-    Check if the dataframe has a 'year' and 'quarter' column. If not, add them.
-    :param dataframe: The dataframe to check
-    :return: New dataframe with 'year' and 'quarter' columns
-    """
-    df = dataframe.copy()
-    drop_columns = ['report_period', 'year', 'quarter']
-    for col in drop_columns:
-        if col in df.columns:
-            df = df.drop(col, axis=1)
-
-    if 'year' in df.columns and 'quarter' in df.columns:
-        return df
-
-    # Helper function to process a single index label
-    def extract_year_quarter(index_val):
-        index_str = str(index_val)
-        if '-' in index_str:
-            # It's a quarterly report, e.g., '2022-Q1'
-            year_str, quarter_str = index_str.split('-')
-            year = int(year_str)
-            quarter = int(quarter_str.replace('Q', ''))
-            return pd.Series([year, quarter])
-        else:
-            # It's an annual report, e.g., '2022'
-            year = int(index_str)
-            quarter = 5  # Using 5 to denote annual
-            return pd.Series([year, quarter])
-
-    # Apply the helper function to the index
-    # This creates a new DataFrame with 'Year' and 'Quarter' columns
-    df[['year', 'quarter']] = df.index.to_series().apply(extract_year_quarter)
-    # Remove Report Type column
-
-    # Rename Year and Quarter columns
-    return df
-
-def clean_dataframe(df: pd.DataFrame, table_schema: list[str], primary_key_cols: list[str]) -> pd.DataFrame:
-    """
-    Cleans a DataFrame by:
-    1. Ensuring it has all columns defined in the table schema, adding missing ones with None values.
-    2. Removing duplicate rows based on the primary key columns (ticker, year, quarter).
-
-    Args:
-        df (pd.DataFrame): The input DataFrame from the brokerage API.
-        table_schema (list): A list of column names for the target database table.
-        primary_key_cols (list): A list of column names that form the primary key for the table.
-
-    Returns:
-        pd.DataFrame: The cleaned DataFrame.
-    """
-    # 1. Handle missing columns
-    # Find columns in the schema that are not in the DataFrame
-    missing_columns = [col for col in table_schema if col not in df.columns]
-
-    # Add the missing columns to the DataFrame and fill with None
-    for col in missing_columns:
-        df[col] = None
-        logger.info(f"Added missing column: '{col}'")
-
-    # Reorder the columns to match the schema
-    df = df[table_schema]
-
-    # 2. Handle duplicate rows
-    # Check if the primary key columns exist in the DataFrame
-    if all(col in df.columns for col in primary_key_cols):
-        # Drop duplicates, keeping the first occurrence
-        initial_row_count = len(df)
-        df.drop_duplicates(subset=primary_key_cols, keep='first', inplace=True)
-        dropped_rows = initial_row_count - len(df)
-        if dropped_rows > 0:
-            logger.info(f"Removed {dropped_rows} duplicate rows based on the primary key.")
-    else:
-        logger.info("Warning: Primary key columns (ticker, year, quarter) not found in the DataFrame. Skipping duplicate removal.")
-
-    return df
 
 class FinanceAPI:
-    def __init__(self):
+    def __init__(self, schema_dict: dict[str, list[str]]):
         self._language = 'en'
         self._source = 'TCBS'
+        self._schema_dict = schema_dict
+        self._primary_key = ['ticker', 'year', 'quarter']
 
     @staticmethod
     def _get_company_profile(symbol: str) -> pd.DataFrame:
@@ -112,7 +38,7 @@ class FinanceAPI:
         company_df = company_df.rename(columns={'symbol': 'ticker'})
         return company_df
 
-    def _get_company_cash_flow(self, symbol: str) -> pd.DataFrame:
+    def _get_company_cash_flow(self, symbol: str, table_name: str) -> pd.DataFrame:
         """
         Retrieve and merge the quarterly and annual cash flow data for a given company symbol.
 
@@ -126,9 +52,10 @@ class FinanceAPI:
         quarterly_data['ticker'] = symbol
         annual_data = transform_df(annual_data)
         quarterly_data = transform_df(quarterly_data)
-        return pd.concat([annual_data, quarterly_data])
+        final_df = clean_dataframe(pd.concat([annual_data, quarterly_data]), self._schema_dict[table_name], self._primary_key)
+        return final_df
 
-    def _get_company_balance_sheet(self, symbol: str) -> pd.DataFrame:
+    def _get_company_balance_sheet(self, symbol: str, table_name: str) -> pd.DataFrame:
         """
         Retrieve and merge the quarterly and annual balance sheet data for a given company symbol.
 
@@ -143,9 +70,10 @@ class FinanceAPI:
         quarterly_data = finance.balance_sheet(period="quarter", lang=self._language)
         quarterly_data['ticker'] = symbol
         quarterly_data = transform_df(quarterly_data)
-        return pd.concat([annual_data, quarterly_data])
+        final_df = clean_dataframe(pd.concat([annual_data, quarterly_data]), self._schema_dict[table_name], self._primary_key)
+        return final_df
 
-    def _get_company_income_statement(self, symbol: str) -> pd.DataFrame:
+    def _get_company_income_statement(self, symbol: str, table_name: str) -> pd.DataFrame:
         """
         Retrieve and merge the quarterly and annual income statement data for a given company symbol.
 
@@ -160,9 +88,10 @@ class FinanceAPI:
         quarterly_data = finance.income_statement(period="quarter", lang=self._language)
         quarterly_data['ticker'] = symbol
         quarterly_data = transform_df(quarterly_data)
-        return pd.concat([annual_data, quarterly_data])
+        final_df = clean_dataframe(pd.concat([annual_data, quarterly_data]), self._schema_dict[table_name], self._primary_key)
+        return final_df
 
-    def _get_company_ratio(self, symbol: str) -> pd.DataFrame:
+    def _get_company_ratio(self, symbol: str, table_name: str) -> pd.DataFrame:
         """
         Retrieve and merge the quarterly and annual ratio data for a given company symbol.
 
@@ -176,7 +105,8 @@ class FinanceAPI:
         quarterly_data['ticker'] = symbol
         annual_data = transform_df(annual_data)
         quarterly_data = transform_df(quarterly_data)
-        return pd.concat([annual_data, quarterly_data])
+        final_df = clean_dataframe(pd.concat([annual_data, quarterly_data]), self._schema_dict[table_name], self._primary_key)
+        return final_df
 
 
     @staticmethod
@@ -203,10 +133,10 @@ class FinanceAPI:
         """
         functions_to_call = {
             "company_profile": (self._get_company_profile, {"symbol": ticker}),
-            "cash_flow": (self._get_company_cash_flow, {"symbol": ticker}),
-            "balance_sheet": (self._get_company_balance_sheet, {"symbol": ticker}),
-            "income_statement": (self._get_company_income_statement, {"symbol": ticker}),
-            "ratios": (self._get_company_ratio, {"symbol": ticker}),
+            "cash_flow": (self._get_company_cash_flow, {"symbol": ticker, "table_name": "cash_flow"}),
+            "balance_sheet": (self._get_company_balance_sheet, {"symbol": ticker, "table_name": "balance_sheet"}),
+            "income_statement": (self._get_company_income_statement, {"symbol": ticker, "table_name": "income_statement"}),
+            "ratios": (self._get_company_ratio, {"symbol": ticker, "table_name": "ratios"}),
             "daily_chart": (self._get_company_price_history_data, {"symbol": ticker, "start_date": start_date, "end_date": end_date})
         }
 

@@ -3,17 +3,17 @@
   <database-model serializer="dbm" dbms="POSTGRES" family-id="POSTGRES" format-version="4.53">
     <root id="1">
       <DateStyle>ymd</DateStyle>
-      <Grants>16388||-9223372036854775808|c|G
-16388||10|c|G
-16388||16389|c|G
-16388||10|C|G
-16388||16389|C|G
-16388||-9223372036854775808|T|G
-16388||10|T|G
-16388||16389|T|G</Grants>
-      <IntrospectionStateNumber>1151</IntrospectionStateNumber>
-      <ServerVersion>17.5</ServerVersion>
-      <StartupTime>1754832014</StartupTime>
+      <Grants>24576||-9223372036854775808|c|G
+24576||10|c|G
+24576||24577|c|G
+24576||10|C|G
+24576||24577|C|G
+24576||-9223372036854775808|T|G
+24576||10|T|G
+24576||24577|T|G</Grants>
+      <IntrospectionStateNumber>778</IntrospectionStateNumber>
+      <ServerVersion>17.2</ServerVersion>
+      <StartupTime>1754361038</StartupTime>
       <TimeZones>true ACDT
 true ACSST
 false ACST
@@ -140,7 +140,6 @@ true America/Ciudad_Juarez
 false America/Coral_Harbour
 false America/Cordoba
 false America/Costa_Rica
-false America/Coyhaique
 false America/Creston
 false America/Cuiaba
 false America/Curacao
@@ -807,10 +806,11 @@ false Zulu
 2200||6171|C|G
 2200||-9223372036854775808|U|G
 2200||6171|U|G
+2200||24577|U|G
 14751||10|C|G
 14751||-9223372036854775808|U|G
 14751||10|U|G</Grants>
-      <IntrospectionStateNumber>992</IntrospectionStateNumber>
+      <IntrospectionStateNumber>777</IntrospectionStateNumber>
       <ObjectId>5</ObjectId>
       <OwnerName>postgres</OwnerName>
     </database>
@@ -819,20 +819,20 @@ false Zulu
 11||-9223372036854775808|U|G
 11||10|U|G
 2200||6171|C|G
-2200||16389|C|G
+2200||24577|C|G
 2200||-9223372036854775808|U|G
 2200||6171|U|G
-2200||16389|U|G
+2200||24577|U|G
 14751||10|C|G
 14751||-9223372036854775808|U|G
 14751||10|U|G</Grants>
-      <IntrospectionStateNumber>1151</IntrospectionStateNumber>
-      <ObjectId>16388</ObjectId>
+      <IntrospectionStateNumber>778</IntrospectionStateNumber>
+      <ObjectId>24576</ObjectId>
       <OwnerName>postgres</OwnerName>
     </database>
     <role id="4" parent="1" name="datboi2001">
       <CanLogin>1</CanLogin>
-      <ObjectId>16389</ObjectId>
+      <ObjectId>24577</ObjectId>
       <RoleGrants>4569
 4570</RoleGrants>
     </role>
@@ -4254,10 +4254,10 @@ false Zulu
     <schema id="266" parent="2" name="public">
       <Comment>standard public schema</Comment>
       <Current>1</Current>
-      <IntrospectionStateNumber>992</IntrospectionStateNumber>
-      <LastIntrospectionLocalTimestamp>2025-08-10.15:55:53</LastIntrospectionLocalTimestamp>
+      <IntrospectionStateNumber>777</IntrospectionStateNumber>
+      <LastIntrospectionLocalTimestamp>2025-08-11.03:43:40</LastIntrospectionLocalTimestamp>
       <ObjectId>2200</ObjectId>
-      <StateNumber>532</StateNumber>
+      <StateNumber>756</StateNumber>
       <OwnerName>pg_database_owner</OwnerName>
     </schema>
     <access-method id="267" parent="3" name="brin">
@@ -7611,247 +7611,247 @@ false Zulu
     <schema id="510" parent="3" name="public">
       <Comment>standard public schema</Comment>
       <Current>1</Current>
-      <IntrospectionStateNumber>1151</IntrospectionStateNumber>
-      <LastIntrospectionLocalTimestamp>2025-08-10.16:06:37</LastIntrospectionLocalTimestamp>
+      <IntrospectionStateNumber>778</IntrospectionStateNumber>
+      <LastIntrospectionLocalTimestamp>2025-08-11.03:43:50</LastIntrospectionLocalTimestamp>
       <ObjectId>2200</ObjectId>
-      <StateNumber>784</StateNumber>
+      <StateNumber>766</StateNumber>
       <OwnerName>pg_database_owner</OwnerName>
     </schema>
     <table id="511" parent="510" name="balance_sheet">
-      <ObjectId>16529</ObjectId>
-      <StateNumber>987</StateNumber>
+      <ObjectId>24597</ObjectId>
+      <StateNumber>772</StateNumber>
       <AccessMethodId>2</AccessMethodId>
       <OwnerName>datboi2001</OwnerName>
     </table>
     <table id="512" parent="510" name="cash_flow">
-      <ObjectId>16539</ObjectId>
-      <StateNumber>988</StateNumber>
+      <ObjectId>24607</ObjectId>
+      <StateNumber>773</StateNumber>
       <AccessMethodId>2</AccessMethodId>
       <OwnerName>datboi2001</OwnerName>
     </table>
     <table id="513" parent="510" name="company_profile">
-      <ObjectId>16512</ObjectId>
-      <StateNumber>986</StateNumber>
+      <ObjectId>24580</ObjectId>
+      <StateNumber>771</StateNumber>
       <AccessMethodId>2</AccessMethodId>
       <OwnerName>datboi2001</OwnerName>
     </table>
     <table id="514" parent="510" name="daily_chart">
-      <ObjectId>16519</ObjectId>
-      <StateNumber>986</StateNumber>
+      <ObjectId>24587</ObjectId>
+      <StateNumber>771</StateNumber>
       <AccessMethodId>2</AccessMethodId>
       <OwnerName>datboi2001</OwnerName>
     </table>
     <table id="515" parent="510" name="income_statement">
-      <ObjectId>16549</ObjectId>
-      <StateNumber>989</StateNumber>
+      <ObjectId>24617</ObjectId>
+      <StateNumber>774</StateNumber>
       <AccessMethodId>2</AccessMethodId>
       <OwnerName>datboi2001</OwnerName>
     </table>
     <table id="516" parent="510" name="ratios">
-      <ObjectId>16559</ObjectId>
-      <StateNumber>990</StateNumber>
+      <ObjectId>24627</ObjectId>
+      <StateNumber>775</StateNumber>
       <AccessMethodId>2</AccessMethodId>
       <OwnerName>datboi2001</OwnerName>
     </table>
     <column id="517" parent="511" name="cash">
       <Position>1</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="518" parent="511" name="fixed_asset">
       <Position>2</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="519" parent="511" name="asset">
       <Position>3</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="520" parent="511" name="debt">
       <Position>4</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="521" parent="511" name="equity">
       <Position>5</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="522" parent="511" name="capital">
       <Position>6</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="523" parent="511" name="central_bank_deposit">
       <Position>7</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="524" parent="511" name="other_bank_deposit">
       <Position>8</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="525" parent="511" name="other_bank_loan">
       <Position>9</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="526" parent="511" name="stock_invest">
       <Position>10</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="527" parent="511" name="customer_loan">
       <Position>11</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="528" parent="511" name="bad_loan">
       <Position>12</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="529" parent="511" name="provision">
       <Position>13</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="530" parent="511" name="net_customer_loan">
       <Position>14</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="531" parent="511" name="other_asset">
       <Position>15</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="532" parent="511" name="other_bank_credit">
       <Position>16</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="533" parent="511" name="owe_other_bank">
       <Position>17</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="534" parent="511" name="owe_central_bank">
       <Position>18</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="535" parent="511" name="valuable_paper">
       <Position>19</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="536" parent="511" name="payable_interest">
       <Position>20</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="537" parent="511" name="receivable_interest">
       <Position>21</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="538" parent="511" name="deposit">
       <Position>22</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="539" parent="511" name="other_debt">
       <Position>23</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="540" parent="511" name="fund">
       <Position>24</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="541" parent="511" name="un_distributed_income">
       <Position>25</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="542" parent="511" name="minor_share_holder_profit">
       <Position>26</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="543" parent="511" name="payable">
       <Position>27</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="544" parent="511" name="ticker">
       <NotNull>1</NotNull>
       <Position>28</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>varchar(10)|0s</StoredType>
       <TypeId>1043</TypeId>
     </column>
     <column id="545" parent="511" name="year">
       <NotNull>1</NotNull>
       <Position>29</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>integer|0s</StoredType>
       <TypeId>23</TypeId>
     </column>
     <column id="546" parent="511" name="quarter">
       <NotNull>1</NotNull>
       <Position>30</Position>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <StoredType>integer|0s</StoredType>
       <TypeId>23</TypeId>
     </column>
     <foreign-key id="547" parent="511" name="balance_sheet_ticker_fkey">
       <ColNames>ticker</ColNames>
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>16534</ObjectId>
-      <StateNumber>987</StateNumber>
+      <ObjectId>24602</ObjectId>
+      <StateNumber>772</StateNumber>
       <RefKeyColPositions>1</RefKeyColPositions>
-      <RefTableId>16512</RefTableId>
+      <RefTableId>24580</RefTableId>
     </foreign-key>
     <index id="548" parent="511" name="balance_sheet_pkey">
       <ColNames>ticker
 year
 quarter</ColNames>
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>16532</ObjectId>
+      <ObjectId>24600</ObjectId>
       <Primary>1</Primary>
-      <StateNumber>987</StateNumber>
+      <StateNumber>772</StateNumber>
       <Unique>1</Unique>
       <AccessMethodId>403</AccessMethodId>
       <CollationNames>default</CollationNames>
@@ -7860,78 +7860,78 @@ quarter</ColNames>
     </index>
     <key id="549" parent="511" name="balance_sheet_pkey">
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>16533</ObjectId>
+      <ObjectId>24601</ObjectId>
       <Primary>1</Primary>
-      <StateNumber>987</StateNumber>
-      <UnderlyingIndexId>16532</UnderlyingIndexId>
+      <StateNumber>772</StateNumber>
+      <UnderlyingIndexId>24600</UnderlyingIndexId>
     </key>
     <column id="550" parent="512" name="invest_cost">
       <Position>1</Position>
-      <StateNumber>988</StateNumber>
+      <StateNumber>773</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="551" parent="512" name="from_invest">
       <Position>2</Position>
-      <StateNumber>988</StateNumber>
+      <StateNumber>773</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="552" parent="512" name="from_financial">
       <Position>3</Position>
-      <StateNumber>988</StateNumber>
+      <StateNumber>773</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="553" parent="512" name="from_sale">
       <Position>4</Position>
-      <StateNumber>988</StateNumber>
+      <StateNumber>773</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="554" parent="512" name="free_cash_flow">
       <Position>5</Position>
-      <StateNumber>988</StateNumber>
+      <StateNumber>773</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="555" parent="512" name="ticker">
       <NotNull>1</NotNull>
       <Position>6</Position>
-      <StateNumber>988</StateNumber>
+      <StateNumber>773</StateNumber>
       <StoredType>varchar(10)|0s</StoredType>
       <TypeId>1043</TypeId>
     </column>
     <column id="556" parent="512" name="year">
       <NotNull>1</NotNull>
       <Position>7</Position>
-      <StateNumber>988</StateNumber>
+      <StateNumber>773</StateNumber>
       <StoredType>integer|0s</StoredType>
       <TypeId>23</TypeId>
     </column>
     <column id="557" parent="512" name="quarter">
       <NotNull>1</NotNull>
       <Position>8</Position>
-      <StateNumber>988</StateNumber>
+      <StateNumber>773</StateNumber>
       <StoredType>integer|0s</StoredType>
       <TypeId>23</TypeId>
     </column>
     <foreign-key id="558" parent="512" name="cash_flow_ticker_fkey">
       <ColNames>ticker</ColNames>
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>16544</ObjectId>
-      <StateNumber>988</StateNumber>
+      <ObjectId>24612</ObjectId>
+      <StateNumber>773</StateNumber>
       <RefKeyColPositions>1</RefKeyColPositions>
-      <RefTableId>16512</RefTableId>
+      <RefTableId>24580</RefTableId>
     </foreign-key>
     <index id="559" parent="512" name="cash_flow_pkey">
       <ColNames>ticker
 year
 quarter</ColNames>
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>16542</ObjectId>
+      <ObjectId>24610</ObjectId>
       <Primary>1</Primary>
-      <StateNumber>988</StateNumber>
+      <StateNumber>773</StateNumber>
       <Unique>1</Unique>
       <AccessMethodId>403</AccessMethodId>
       <CollationNames>default</CollationNames>
@@ -7940,78 +7940,78 @@ quarter</ColNames>
     </index>
     <key id="560" parent="512" name="cash_flow_pkey">
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>16543</ObjectId>
+      <ObjectId>24611</ObjectId>
       <Primary>1</Primary>
-      <StateNumber>988</StateNumber>
-      <UnderlyingIndexId>16542</UnderlyingIndexId>
+      <StateNumber>773</StateNumber>
+      <UnderlyingIndexId>24610</UnderlyingIndexId>
     </key>
     <column id="561" parent="513" name="ticker">
       <NotNull>1</NotNull>
       <Position>1</Position>
-      <StateNumber>985</StateNumber>
+      <StateNumber>770</StateNumber>
       <StoredType>varchar(10)|0s</StoredType>
       <TypeId>1043</TypeId>
     </column>
     <column id="562" parent="513" name="id">
       <Position>2</Position>
-      <StateNumber>985</StateNumber>
+      <StateNumber>770</StateNumber>
       <StoredType>varchar(50)|0s</StoredType>
       <TypeId>1043</TypeId>
     </column>
     <column id="563" parent="513" name="issue_share">
       <Position>3</Position>
-      <StateNumber>985</StateNumber>
+      <StateNumber>770</StateNumber>
       <StoredType>bigint|0s</StoredType>
       <TypeId>20</TypeId>
     </column>
     <column id="564" parent="513" name="history">
       <Position>4</Position>
-      <StateNumber>985</StateNumber>
+      <StateNumber>770</StateNumber>
       <StoredType>text|0s</StoredType>
       <TypeId>25</TypeId>
     </column>
     <column id="565" parent="513" name="company_profile">
       <Position>5</Position>
-      <StateNumber>985</StateNumber>
+      <StateNumber>770</StateNumber>
       <StoredType>text|0s</StoredType>
       <TypeId>25</TypeId>
     </column>
     <column id="566" parent="513" name="icb_name3">
       <Position>6</Position>
-      <StateNumber>985</StateNumber>
+      <StateNumber>770</StateNumber>
       <StoredType>varchar(50)|0s</StoredType>
       <TypeId>1043</TypeId>
     </column>
     <column id="567" parent="513" name="icb_name2">
       <Position>7</Position>
-      <StateNumber>985</StateNumber>
+      <StateNumber>770</StateNumber>
       <StoredType>varchar(50)|0s</StoredType>
       <TypeId>1043</TypeId>
     </column>
     <column id="568" parent="513" name="icb_name4">
       <Position>8</Position>
-      <StateNumber>985</StateNumber>
+      <StateNumber>770</StateNumber>
       <StoredType>varchar(50)|0s</StoredType>
       <TypeId>1043</TypeId>
     </column>
     <column id="569" parent="513" name="financial_ratio_issue_share">
       <Position>9</Position>
-      <StateNumber>985</StateNumber>
+      <StateNumber>770</StateNumber>
       <StoredType>bigint|0s</StoredType>
       <TypeId>20</TypeId>
     </column>
     <column id="570" parent="513" name="charter_capital">
       <Position>10</Position>
-      <StateNumber>985</StateNumber>
+      <StateNumber>770</StateNumber>
       <StoredType>bigint|0s</StoredType>
       <TypeId>20</TypeId>
     </column>
     <index id="571" parent="513" name="company_profile_pkey">
       <ColNames>ticker</ColNames>
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>16517</ObjectId>
+      <ObjectId>24585</ObjectId>
       <Primary>1</Primary>
-      <StateNumber>985</StateNumber>
+      <StateNumber>770</StateNumber>
       <Unique>1</Unique>
       <AccessMethodId>403</AccessMethodId>
       <CollationNames>default</CollationNames>
@@ -8020,70 +8020,70 @@ quarter</ColNames>
     </index>
     <key id="572" parent="513" name="company_profile_pkey">
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>16518</ObjectId>
+      <ObjectId>24586</ObjectId>
       <Primary>1</Primary>
-      <StateNumber>985</StateNumber>
-      <UnderlyingIndexId>16517</UnderlyingIndexId>
+      <StateNumber>770</StateNumber>
+      <UnderlyingIndexId>24585</UnderlyingIndexId>
     </key>
     <column id="573" parent="514" name="time">
       <NotNull>1</NotNull>
       <Position>1</Position>
-      <StateNumber>986</StateNumber>
+      <StateNumber>771</StateNumber>
       <StoredType>date|0s</StoredType>
       <TypeId>1082</TypeId>
     </column>
     <column id="574" parent="514" name="open">
       <Position>2</Position>
-      <StateNumber>986</StateNumber>
+      <StateNumber>771</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="575" parent="514" name="high">
       <Position>3</Position>
-      <StateNumber>986</StateNumber>
+      <StateNumber>771</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="576" parent="514" name="low">
       <Position>4</Position>
-      <StateNumber>986</StateNumber>
+      <StateNumber>771</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="577" parent="514" name="close">
       <Position>5</Position>
-      <StateNumber>986</StateNumber>
+      <StateNumber>771</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="578" parent="514" name="volume">
       <Position>6</Position>
-      <StateNumber>986</StateNumber>
+      <StateNumber>771</StateNumber>
       <StoredType>bigint|0s</StoredType>
       <TypeId>20</TypeId>
     </column>
     <column id="579" parent="514" name="ticker">
       <NotNull>1</NotNull>
       <Position>7</Position>
-      <StateNumber>986</StateNumber>
+      <StateNumber>771</StateNumber>
       <StoredType>varchar(10)|0s</StoredType>
       <TypeId>1043</TypeId>
     </column>
     <foreign-key id="580" parent="514" name="daily_chart_ticker_fkey">
       <ColNames>ticker</ColNames>
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>16524</ObjectId>
-      <StateNumber>986</StateNumber>
+      <ObjectId>24592</ObjectId>
+      <StateNumber>771</StateNumber>
       <RefKeyColPositions>1</RefKeyColPositions>
-      <RefTableId>16512</RefTableId>
+      <RefTableId>24580</RefTableId>
     </foreign-key>
     <index id="581" parent="514" name="daily_chart_pkey">
       <ColNames>ticker
 time</ColNames>
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>16522</ObjectId>
+      <ObjectId>24590</ObjectId>
       <Primary>1</Primary>
-      <StateNumber>986</StateNumber>
+      <StateNumber>771</StateNumber>
       <Unique>1</Unique>
       <AccessMethodId>403</AccessMethodId>
       <CollationNames>default</CollationNames>
@@ -8092,150 +8092,150 @@ time</ColNames>
     </index>
     <key id="582" parent="514" name="daily_chart_pkey">
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>16523</ObjectId>
+      <ObjectId>24591</ObjectId>
       <Primary>1</Primary>
-      <StateNumber>986</StateNumber>
-      <UnderlyingIndexId>16522</UnderlyingIndexId>
+      <StateNumber>771</StateNumber>
+      <UnderlyingIndexId>24590</UnderlyingIndexId>
     </key>
     <column id="583" parent="515" name="revenue">
       <Position>1</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="584" parent="515" name="year_revenue_growth">
       <Position>2</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="585" parent="515" name="operation_expense">
       <Position>3</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="586" parent="515" name="operation_profit">
       <Position>4</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="587" parent="515" name="year_operation_profit_growth">
       <Position>5</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="588" parent="515" name="pre_tax_profit">
       <Position>6</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="589" parent="515" name="post_tax_profit">
       <Position>7</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="590" parent="515" name="share_holder_income">
       <Position>8</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="591" parent="515" name="year_share_holder_income_growth">
       <Position>9</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="592" parent="515" name="invest_profit">
       <Position>10</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="593" parent="515" name="service_profit">
       <Position>11</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="594" parent="515" name="other_profit">
       <Position>12</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="595" parent="515" name="provision_expense">
       <Position>13</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="596" parent="515" name="operation_income">
       <Position>14</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="597" parent="515" name="ticker">
       <NotNull>1</NotNull>
       <Position>15</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>varchar(10)|0s</StoredType>
       <TypeId>1043</TypeId>
     </column>
     <column id="598" parent="515" name="year">
       <NotNull>1</NotNull>
       <Position>16</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>integer|0s</StoredType>
       <TypeId>23</TypeId>
     </column>
     <column id="599" parent="515" name="quarter">
       <NotNull>1</NotNull>
       <Position>17</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>integer|0s</StoredType>
       <TypeId>23</TypeId>
     </column>
     <column id="600" parent="515" name="quarter_revenue_growth">
       <Position>18</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="601" parent="515" name="quarter_operation_profit_growth">
       <Position>19</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="602" parent="515" name="quarter_share_holder_income_growth">
       <Position>20</Position>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <foreign-key id="603" parent="515" name="income_statement_ticker_fkey">
       <ColNames>ticker</ColNames>
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>16554</ObjectId>
-      <StateNumber>989</StateNumber>
+      <ObjectId>24622</ObjectId>
+      <StateNumber>774</StateNumber>
       <RefKeyColPositions>1</RefKeyColPositions>
-      <RefTableId>16512</RefTableId>
+      <RefTableId>24580</RefTableId>
     </foreign-key>
     <index id="604" parent="515" name="income_statement_pkey">
       <ColNames>ticker
 year
 quarter</ColNames>
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>16552</ObjectId>
+      <ObjectId>24620</ObjectId>
       <Primary>1</Primary>
-      <StateNumber>989</StateNumber>
+      <StateNumber>774</StateNumber>
       <Unique>1</Unique>
       <AccessMethodId>403</AccessMethodId>
       <CollationNames>default</CollationNames>
@@ -8244,228 +8244,228 @@ quarter</ColNames>
     </index>
     <key id="605" parent="515" name="income_statement_pkey">
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>16553</ObjectId>
+      <ObjectId>24621</ObjectId>
       <Primary>1</Primary>
-      <StateNumber>989</StateNumber>
-      <UnderlyingIndexId>16552</UnderlyingIndexId>
+      <StateNumber>774</StateNumber>
+      <UnderlyingIndexId>24620</UnderlyingIndexId>
     </key>
     <column id="606" parent="516" name="price_to_earning">
       <Position>1</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="607" parent="516" name="price_to_book">
       <Position>2</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="608" parent="516" name="dividend">
       <Position>3</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="609" parent="516" name="roe">
       <Position>4</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="610" parent="516" name="roa">
       <Position>5</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="611" parent="516" name="earning_per_share">
       <Position>6</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="612" parent="516" name="book_value_per_share">
       <Position>7</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="613" parent="516" name="interest_margin">
       <Position>8</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="614" parent="516" name="non_interest_on_toi">
       <Position>9</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="615" parent="516" name="bad_debt_percentage">
       <Position>10</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="616" parent="516" name="provision_on_bad_debt">
       <Position>11</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="617" parent="516" name="cost_of_financing">
       <Position>12</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="618" parent="516" name="equity_on_total_asset">
       <Position>13</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="619" parent="516" name="equity_on_loan">
       <Position>14</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="620" parent="516" name="cost_to_income">
       <Position>15</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="621" parent="516" name="equity_on_liability">
       <Position>16</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="622" parent="516" name="eps_change">
       <Position>17</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="623" parent="516" name="asset_on_equity">
       <Position>18</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="624" parent="516" name="pre_provision_on_toi">
       <Position>19</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="625" parent="516" name="post_tax_on_toi">
       <Position>20</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="626" parent="516" name="loan_on_earn_asset">
       <Position>21</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="627" parent="516" name="loan_on_asset">
       <Position>22</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="628" parent="516" name="loan_on_deposit">
       <Position>23</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="629" parent="516" name="deposit_on_earn_asset">
       <Position>24</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="630" parent="516" name="bad_debt_on_asset">
       <Position>25</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="631" parent="516" name="liquidity_on_liability">
       <Position>26</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="632" parent="516" name="payable_on_equity">
       <Position>27</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="633" parent="516" name="cancel_debt">
       <Position>28</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="634" parent="516" name="book_value_per_share_change">
       <Position>29</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="635" parent="516" name="credit_growth">
       <Position>30</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>double precision|0s</StoredType>
       <TypeId>701</TypeId>
     </column>
     <column id="636" parent="516" name="ticker">
       <NotNull>1</NotNull>
       <Position>31</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>varchar(10)|0s</StoredType>
       <TypeId>1043</TypeId>
     </column>
     <column id="637" parent="516" name="year">
       <NotNull>1</NotNull>
       <Position>32</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>integer|0s</StoredType>
       <TypeId>23</TypeId>
     </column>
     <column id="638" parent="516" name="quarter">
       <NotNull>1</NotNull>
       <Position>33</Position>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <StoredType>integer|0s</StoredType>
       <TypeId>23</TypeId>
     </column>
     <foreign-key id="639" parent="516" name="ratios_ticker_fkey">
       <ColNames>ticker</ColNames>
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>16564</ObjectId>
-      <StateNumber>990</StateNumber>
+      <ObjectId>24632</ObjectId>
+      <StateNumber>775</StateNumber>
       <RefKeyColPositions>1</RefKeyColPositions>
-      <RefTableId>16512</RefTableId>
+      <RefTableId>24580</RefTableId>
     </foreign-key>
     <index id="640" parent="516" name="ratios_pkey">
       <ColNames>ticker
 year
 quarter</ColNames>
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>16562</ObjectId>
+      <ObjectId>24630</ObjectId>
       <Primary>1</Primary>
-      <StateNumber>990</StateNumber>
+      <StateNumber>775</StateNumber>
       <Unique>1</Unique>
       <AccessMethodId>403</AccessMethodId>
       <CollationNames>default</CollationNames>
@@ -8474,10 +8474,10 @@ quarter</ColNames>
     </index>
     <key id="641" parent="516" name="ratios_pkey">
       <NameSurrogate>1</NameSurrogate>
-      <ObjectId>16563</ObjectId>
+      <ObjectId>24631</ObjectId>
       <Primary>1</Primary>
-      <StateNumber>990</StateNumber>
-      <UnderlyingIndexId>16562</UnderlyingIndexId>
+      <StateNumber>775</StateNumber>
+      <UnderlyingIndexId>24630</UnderlyingIndexId>
     </key>
   </database-model>
 </dataSource>
