@@ -5,7 +5,7 @@ This project is an experiment with the VNStock library. It gets the information 
 
 ## Environment Variables
 
-To run this project, you will need to add the following environment variables to your .env file. The content of the .env file can be found in .env.template. The environment variables 
+To run this project, you will need to add the following environment variables to your .env file. The content of the .env file can be found in .env.template.
 
 `TESTING`: A boolean (True | False). When TESTING=True, the program only gets the data for 2 tickers. TESTING=False means the program will get the data for all 27 publicly-listed banks
 
