@@ -1,4 +1,5 @@
 import pandas as pd
+from typing import Any
 from datetime import datetime, timedelta
 from pathlib import Path
 from FinanceApi.FinanceApi import FinanceAPI
@@ -32,7 +33,7 @@ def call_api(api_client: FinanceAPI, stock: str, start_date: str, end_date: str)
         return stock_data
 
 class DataOrchestrator:
-    def __init__(self, listing_df: pd.DataFrame, data_path: Path, db_url: str, db_schema_file: Path):
+    def __init__(self, listing_df: pd.DataFrame, data_path: Path, db_url: str, db_schema_file: Path, load_from_file: bool = False):
         """
         Initialize a DataOrchestrator instance.
 
@@ -46,6 +47,7 @@ class DataOrchestrator:
         self._today = datetime.now()
         self._db_interface = DBInterface(db_url, db_schema_file)
         self._db_schema = get_table_schemas_from_sql(str(db_schema_file))
+        self._load_from_file = load_from_file
 
     def _fetch_data_worker(self, start_date: str, end_date: str, finance_api: FinanceAPI, ticker: str) -> dict[str, pd.DataFrame]:
         """
@@ -104,10 +106,21 @@ class DataOrchestrator:
         stock_data_list = []
         for _, row in self.listings_df.iterrows():
             ticker = row['symbol']
-            stock_data = self._fetch_data_worker(start_date, end_date, finance_api,  ticker)
-            stock_data_list.append(stock_data)
+            if self._load_from_file:
+                # Loop through the files in the folder
+                ticker_folder_path = self._cur_path / ticker
+                if ticker_folder_path.exists():
+                    data_dictionary: dict[str, Any] = {'ticker': ticker}
+                    for file in ticker_folder_path.iterdir():
+                        stock_data = pd.read_csv(file, sep=',', encoding='utf-8-sig')
+                        stem = file.stem
+                        table_name = stem.split('_', maxsplit=1)[1]
+                        data_dictionary[table_name] = stock_data
+                    stock_data_list.append(data_dictionary)
+            else:
+                stock_data = self._fetch_data_worker(start_date, end_date, finance_api,  ticker)
+                stock_data_list.append(stock_data)
 
-        file_paths: list[Path] = []
 
         # For testing and debugging
         # for folder in self._cur_path.iterdir():
@@ -122,8 +135,8 @@ class DataOrchestrator:
                 df = data[k]
                 if isinstance(df, pd.DataFrame):
                     file_path = symbol_folder_path / f"{ticker}_{k}.csv"
-                    file_paths.append(file_path)
-                    write_data_to_file(file_path, df)
+                    if not self._load_from_file:
+                        write_data_to_file(file_path, df)
                     self._dump_data_to_db(k, df)
         # Since all tables refer to the ticker in company_profile, we have to dump company_profile first
         # Sort the file_paths by this criteria: The file names that have "company_profile" in the name will be dumped first

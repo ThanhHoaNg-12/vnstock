@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS daily_chart (
     volume BIGINT NULL,
     ticker VARCHAR(10),
     PRIMARY KEY (ticker, time),
-    FOREIGN KEY (ticker) REFERENCES company_profile(ticker)
+    FOREIGN KEY (ticker) REFERENCES company_profile(ticker) ON DELETE CASCADE
 );
 
 -- The `balance_sheet` table contains quarterly balance sheet data.
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS balance_sheet (
     year INT NOT NULL,
     quarter INT NOT NULL,
     PRIMARY KEY (ticker, year, quarter),
-    FOREIGN KEY (ticker) REFERENCES company_profile(ticker)
+    FOREIGN KEY (ticker) REFERENCES company_profile(ticker) ON DELETE CASCADE
 );
 
 -- The `cash_flow` table stores quarterly cash flow data.
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS  cash_flow (
     year INT NOT NULL,
     quarter INT NOT NULL,
     PRIMARY KEY (ticker, year, quarter),
-    FOREIGN KEY (ticker) REFERENCES company_profile(ticker)
+    FOREIGN KEY (ticker) REFERENCES company_profile(ticker) ON DELETE CASCADE
 );
 
 -- The `income_statement` table holds quarterly income statement data.
@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS income_statement (
     quarter_operation_profit_growth FLOAT NULL,
     quarter_share_holder_income_growth FLOAT NULL,
     PRIMARY KEY (ticker, year, quarter),
-    FOREIGN KEY (ticker) REFERENCES company_profile(ticker)
+    FOREIGN KEY (ticker) REFERENCES company_profile(ticker) ON DELETE CASCADE
 );
 
 -- The `ratios` table stores quarterly financial ratio data.
@@ -143,5 +143,5 @@ CREATE TABLE IF NOT EXISTS ratios (
     year INT NOT NULL,
     quarter INT NOT NULL,
     PRIMARY KEY (ticker, year, quarter),
-    FOREIGN KEY (ticker) REFERENCES company_profile(ticker)
+    FOREIGN KEY (ticker) REFERENCES company_profile(ticker) ON DELETE CASCADE
 );

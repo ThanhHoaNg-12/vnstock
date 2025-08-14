@@ -11,3 +11,4 @@ To run this project, you will need to add the following environment variables to
 
 `DATABASE_URL`: Postgresql connection url (postgresql://postgres:postgres@localhost:5432/vnstock). Please create a database in Postgresql and include the name of the database in the url.
 
+`LOAD_FROM_FILE`: A boolean (True | False). When LOAD_FROM_FILE=True, the program will load the data from a csv file. LOAD_FROM_FILE=False means the program will get the data from the vnstock API

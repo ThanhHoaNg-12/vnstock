@@ -29,7 +29,8 @@ def main():
         stock_data_folder.mkdir()
     logger.info("Downloading data...")
     data_orchestrator = DataOrchestrator(listing_df=listings_df, data_path=stock_data_folder,
-                                         db_url=os.getenv("DATABASE_URL"), db_schema_file=Path.cwd() / "schema.sql",)
+                                         db_url=os.getenv("DATABASE_URL"), db_schema_file=Path.cwd() / "schema.sql",
+                                         load_from_file=parse_boolean(os.getenv("LOAD_FROM_FILE")))
     data_orchestrator.run()
 
     logger.info("Done")
