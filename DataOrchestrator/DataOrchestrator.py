@@ -3,7 +3,7 @@ from typing import Any
 from datetime import datetime, timedelta
 from pathlib import Path
 from FinanceApi.FinanceApi import FinanceAPI
-from util.utility import make_folder, write_data_to_file, get_table_schemas_from_sql
+from util.utility import make_folder, write_data_to_file, get_table_schemas_from_sql, prepare_year_table, prepare_dates_table, prepare_quarter_table
 from DBInterface.DBInterface import DBInterface
 import logging
 
@@ -110,23 +110,23 @@ class DataOrchestrator:
                 # Loop through the files in the folder
                 ticker_folder_path = self._cur_path / ticker
                 if ticker_folder_path.exists():
-                    data_dictionary: dict[str, Any] = {'ticker': ticker}
+                    stock_data_dictionary: dict[str, Any] = {'ticker': ticker}
                     for file in ticker_folder_path.iterdir():
                         stock_data = pd.read_csv(file, sep=',', encoding='utf-8-sig')
                         stem = file.stem
                         table_name = stem.split('_', maxsplit=1)[1]
-                        data_dictionary[table_name] = stock_data
-                    stock_data_list.append(data_dictionary)
+                        stock_data_dictionary[table_name] = stock_data
+                    stock_data_list.append(stock_data_dictionary)
             else:
                 stock_data = self._fetch_data_worker(start_date, end_date, finance_api,  ticker)
                 stock_data_list.append(stock_data)
-
-
-        # For testing and debugging
-        # for folder in self._cur_path.iterdir():
-        #     for file in folder.iterdir():
-        #         file_paths.append(file)
-
+        quarter_table = prepare_quarter_table()
+        year_table = prepare_year_table(list(range(2000, self._today.year + 100)))
+        start_date = datetime(year=2000, month=1, day=1)
+        end_date = datetime(year=2100, month=1, day=1)
+        dates_table = prepare_dates_table(list(pd.date_range(start_date,  end_date, freq='D')))
+        for table, table_name in zip([quarter_table, year_table, dates_table], ['quarters', 'years', 'dates']):
+            self._db_interface.dump_data_to_db(table_name, table)
         logger.info("Data writing process started.")
         for data in stock_data_list:
             ticker = data['ticker']

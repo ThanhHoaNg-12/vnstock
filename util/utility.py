@@ -129,6 +129,25 @@ def clean_dataframe(df: pd.DataFrame, table_schema: list[str], primary_key_cols:
 
     return df
 
+def prepare_quarter_table() -> pd.DataFrame:
+    # Prepare dim tables
+    # Quarter table has 1 column quarter and 5 values from 1 to 5
+    quarter = pd.DataFrame({'quarter': [1, 2, 3, 4, 5]})
+    return quarter
+
+def prepare_year_table(years: list[int]) -> pd.DataFrame:
+    # Prepare dim tables
+    # Year table has 1 column year and
+    year = pd.DataFrame({'year': years})
+    return year
+
+def prepare_dates_table(dates_list: list[str]) -> pd.DataFrame:
+    # Prepare dates table
+    dates = pd.DataFrame({'date': dates_list})
+    # add the year column
+    dates['year'] = dates['date'].dt.year
+    return dates
+
 
 def get_table_schemas_from_sql(filepath):
     """

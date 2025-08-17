@@ -121,6 +121,8 @@ class FinanceAPI:
         quote = Quote(symbol=symbol)
         price_history =quote.history(start=start_date, end=end_date)
         price_history['ticker'] = symbol
+        # Rename time column to date
+        price_history = price_history.rename(columns={'time': 'date'})
         return price_history
 
     def build_dict(self, ticker: str, start_date: str, end_date: str) -> dict[str, Any]:
@@ -132,12 +134,12 @@ class FinanceAPI:
         :return: A dictionary of dataframes
         """
         functions_to_call = {
-            "company_profile": (self._get_company_profile, {"symbol": ticker}),
-            "cash_flow": (self._get_company_cash_flow, {"symbol": ticker, "table_name": "cash_flow"}),
-            "balance_sheet": (self._get_company_balance_sheet, {"symbol": ticker, "table_name": "balance_sheet"}),
-            "income_statement": (self._get_company_income_statement, {"symbol": ticker, "table_name": "income_statement"}),
+            "companies": (self._get_company_profile, {"symbol": ticker}),
+            "cash_flows": (self._get_company_cash_flow, {"symbol": ticker, "table_name": "cash_flows"}),
+            "balance_sheets": (self._get_company_balance_sheet, {"symbol": ticker, "table_name": "balance_sheets"}),
+            "income_statements": (self._get_company_income_statement, {"symbol": ticker, "table_name": "income_statements"}),
             "ratios": (self._get_company_ratio, {"symbol": ticker, "table_name": "ratios"}),
-            "daily_chart": (self._get_company_price_history_data, {"symbol": ticker, "start_date": start_date, "end_date": end_date})
+            "daily_prices": (self._get_company_price_history_data, {"symbol": ticker, "start_date": start_date, "end_date": end_date})
         }
 
         response: dict[str, Any] = {"ticker": ticker}
