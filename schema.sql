@@ -1,14 +1,8 @@
--- This schema is designed for a microservice backend, providing a clean and efficient
--- structure for serving financial data to an application dashboard.
-
--- =========================================================================
--- DIMENSION TABLES
--- =========================================================================
 
 -- The `companies` table stores static information about each company.
 -- 'ticker' serves as the primary key.
 CREATE TABLE IF NOT EXISTS companies (
-    ticker VARCHAR(10) PRIMARY KEY,
+    ticker VARCHAR(10),
     id VARCHAR(50) NULL,
     issue_share BIGINT NULL,
     history TEXT NULL,
@@ -17,23 +11,27 @@ CREATE TABLE IF NOT EXISTS companies (
     icb_name2 VARCHAR(50) NULL,
     icb_name4 VARCHAR(50) NULL,
     financial_ratio_issue_share BIGINT NULL,
-    charter_capital BIGINT NULL
+    charter_capital BIGINT NULL,
+    PRIMARY KEY (ticker)
 );
 
 -- The `years` table stores unique years for time-based analysis.
 CREATE TABLE IF NOT EXISTS years (
-    year INT PRIMARY KEY
+    year INT,
+    PRIMARY KEY (year)
 );
 
 -- The `quarters` table stores unique quarters.
 CREATE TABLE IF NOT EXISTS quarters (
-    quarter INT PRIMARY KEY
+    quarter INT,
+    PRIMARY KEY (quarter)
 );
 
 -- The `dates` table stores unique dates, including a foreign key to the `years` table.
 CREATE TABLE IF NOT EXISTS dates (
-    date DATE PRIMARY KEY,
+    date DATE,
     year INT NOT NULL,
+    PRIMARY KEY (date),
     FOREIGN KEY (year) REFERENCES years(year) ON DELETE CASCADE
 );
 

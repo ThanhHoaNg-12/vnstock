@@ -1,6 +1,7 @@
 import psycopg
 from psycopg.connection import Connection
 from psycopg import sql
+from psycopg.rows import dict_row, Row
 from io import StringIO
 import pandas as pd
 from pathlib import Path
@@ -55,6 +56,51 @@ class DBInterface:
                 copy.write(csv_buffer.read())
             self._conn.commit()
 
+    def get_records_with_primary_keys(self, table_name: str, ticker: str) -> list[Row]:
+        """
+        Fetch records from a PostgreSQL table based on the given table name, ticker, and columns.
+
+        Parameters
+        ----------
+        table_name: str
+            The name of the PostgreSQL table from which to fetch records.
+        ticker: str
+            The primary key value for filtering the records.
+        Returns
+        -------
+        list
+            A list of tuples containing the fetched records. Each tuple corresponds to a row in the table.
+        """
+        with self._conn.cursor() as cur:
+            cur.execute(
+                sql.SQL(
+                    "SELECT * FROM {} WHERE {} = %s",
+                ).format(sql.Identifier(table_name), sql.Identifier('ticker')),
+                (ticker,),
+            )
+            return cur.fetchall()
+
+    def count_records(self, table_name: str) -> int:
+        """
+        Count the number of records in the given PostgreSQL table.
+
+        Parameters
+        ----------
+        table_name: str
+            The name of the PostgreSQL table in which to count records.
+
+        Returns
+        -------
+        int
+            The number of records in the table.
+        """
+        with self._conn.cursor() as cur:
+            cur.execute(
+                sql.SQL(
+                    "SELECT COUNT(*) FROM {}",
+                ).format(sql.Identifier(table_name)),
+            )
+            return cur.fetchone()[0]
 
     def close_connection(self):
         self._conn.close()

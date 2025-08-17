@@ -1,6 +1,7 @@
 from vnstock import Listing
 from pathlib import Path
 import pandas as pd
+import re
 import logging
 logging.basicConfig(
     format="{asctime} - {levelname} - {message}",
@@ -148,16 +149,16 @@ def prepare_dates_table(dates_list: list[str]) -> pd.DataFrame:
     dates['year'] = dates['date'].dt.year
     return dates
 
-
 def get_table_schemas_from_sql(filepath):
     """
-    Parses a .sql file to extract table names and their column names.
+    Parses a .sql file to extract table names, column names, primary keys, and foreign keys.
 
     Args:
         filepath (str): The path to the SQL schema file.
 
     Returns:
-        dict: A dictionary where keys are table names and values are lists of column names.
+        dict: A dictionary where keys are table names and values are another
+              dictionary containing lists of 'columns', 'primary_keys', and 'foreign_keys'.
     """
     table_schemas = {}
     current_table = None
@@ -173,51 +174,61 @@ def get_table_schemas_from_sql(filepath):
                     continue
 
                 # Find the start of a CREATE TABLE statement
-                if line.startswith('CREATE TABLE'):
-                    # A more robust way to find the table name
-                    # It looks for the word after 'CREATE TABLE IF NOT EXISTS' or just 'CREATE TABLE'
-                    parts = line.split()
-                    if 'EXISTS' in parts:
-                        table_name_index = parts.index('EXISTS') + 1
-                        table_name = parts[table_name_index].replace('(', '')
-                    else:
-                        table_name_index = parts.index('TABLE') + 1
-                        table_name = parts[table_name_index].replace('(', '')
-
-                    current_table = table_name
-                    table_schemas[current_table] = []
-                    in_table_definition = True
-                    # Check if the table definition is on a single line
-                    if line.endswith(');'):
-                        # This case is less common for multi-column tables, but we'll handle it.
-                        column_string = line[line.find('(') + 1:line.rfind(')')]
-                        columns = [col.strip().split()[0] for col in column_string.split(',')]
-                        table_schemas[current_table].extend(columns)
-                        in_table_definition = False
+                if line.upper().startswith('CREATE TABLE'):
+                    # Use regex to robustly find the table name, handling backticks and "IF NOT EXISTS"
+                    match = re.search(r'CREATE TABLE(?:\s+IF NOT EXISTS)?\s+`?(\w+)`?', line, re.IGNORECASE)
+                    if match:
+                        current_table = match.group(1)
+                        table_schemas[current_table] = {
+                            'columns': [],
+                            'primary_keys': [],
+                            'foreign_keys': []
+                        }
+                        in_table_definition = True
                     continue
 
-                # Collect column names inside the table definition
+                # Process lines within a table definition
                 if in_table_definition:
-                    # Look for the closing parenthesis, which marks the end of the definition
+                    # Check for the end of the table definition
                     if line.startswith(');'):
                         in_table_definition = False
                         current_table = None
                         continue
 
-                    # Ignore lines with foreign key or primary key definitions
-                    if 'PRIMARY KEY' in line or 'FOREIGN KEY' in line:
-                        continue
+                    # Check for PRIMARY KEY constraint
+                    if 'PRIMARY KEY' in line.upper():
+                        # Extract column names from PRIMARY KEY (col1, col2)
+                        pk_match = re.search(r'PRIMARY KEY\s*\((.*?)\)', line, re.IGNORECASE)
+                        if pk_match:
+                            # Split by comma and strip quotes/spaces
+                            keys = [k.strip().replace('`', '') for k in pk_match.group(1).split(',')]
+                            table_schemas[current_table]['primary_keys'].extend(keys)
+                        continue # Move to the next line
 
-                    # Extract the first word as the column name
-                    parts = line.strip().split()
-                    if parts:
-                        column_name = parts[0].replace(',', '').strip()
-                        # Add only if it's a valid column name and not an empty string
-                        if column_name and column_name not in ['PRIMARY', 'FOREIGN']:
-                            table_schemas[current_table].append(column_name)
+                    # Check for FOREIGN KEY constraint
+                    if 'FOREIGN KEY' in line.upper():
+                        # Extract column name from FOREIGN KEY (col_name) REFERENCES ...
+                        fk_match = re.search(r'FOREIGN KEY\s*\((.*?)\)', line, re.IGNORECASE)
+                        if fk_match:
+                            keys = [k.strip().replace('`', '') for k in fk_match.group(1).split(',')]
+                            table_schemas[current_table]['foreign_keys'].extend(keys)
+                        continue # Move to the next line
+
+                    # If it's not a key, it's a column definition.
+                    # This regex is simple and assumes the column name is the first word.
+                    # It handles backticks and ignores constraints on the same line.
+                    col_match = re.match(r'`?(\w+)`?', line)
+                    if col_match:
+                        column_name = col_match.group(1)
+                        # Avoid adding constraint keywords as columns
+                        if column_name.upper() not in ['CONSTRAINT', 'PRIMARY', 'FOREIGN', 'KEY']:
+                             table_schemas[current_table]['columns'].append(column_name)
 
     except FileNotFoundError:
         print(f"Error: The file '{filepath}' was not found.")
+        return None
+    except Exception as e:
+        print(f"An error occurred: {e}")
         return None
 
     return table_schemas

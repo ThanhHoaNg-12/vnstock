@@ -16,13 +16,11 @@ logger = logging.getLogger(__name__)
 logger.setLevel("INFO")
 
 
-
 class FinanceAPI:
-    def __init__(self, schema_dict: dict[str, list[str]]):
+    def __init__(self, schema_dict: dict[str, Any]):
         self._language = 'en'
         self._source = 'TCBS'
         self._schema_dict = schema_dict
-        self._primary_key = ['ticker', 'year', 'quarter']
 
     @staticmethod
     def _get_company_profile(symbol: str) -> pd.DataFrame:
@@ -52,7 +50,8 @@ class FinanceAPI:
         quarterly_data['ticker'] = symbol
         annual_data = transform_df(annual_data)
         quarterly_data = transform_df(quarterly_data)
-        final_df = clean_dataframe(pd.concat([annual_data, quarterly_data]), self._schema_dict[table_name], self._primary_key)
+        final_df = clean_dataframe(pd.concat([annual_data, quarterly_data]), self._schema_dict[table_name]['columns'],
+                                   self._schema_dict[table_name]['primary_keys'])
         return final_df
 
     def _get_company_balance_sheet(self, symbol: str, table_name: str) -> pd.DataFrame:
@@ -70,7 +69,8 @@ class FinanceAPI:
         quarterly_data = finance.balance_sheet(period="quarter", lang=self._language)
         quarterly_data['ticker'] = symbol
         quarterly_data = transform_df(quarterly_data)
-        final_df = clean_dataframe(pd.concat([annual_data, quarterly_data]), self._schema_dict[table_name], self._primary_key)
+        final_df = clean_dataframe(pd.concat([annual_data, quarterly_data]), self._schema_dict[table_name]['columns'],
+                                   self._schema_dict[table_name]['primary_keys'])
         return final_df
 
     def _get_company_income_statement(self, symbol: str, table_name: str) -> pd.DataFrame:
@@ -88,7 +88,8 @@ class FinanceAPI:
         quarterly_data = finance.income_statement(period="quarter", lang=self._language)
         quarterly_data['ticker'] = symbol
         quarterly_data = transform_df(quarterly_data)
-        final_df = clean_dataframe(pd.concat([annual_data, quarterly_data]), self._schema_dict[table_name], self._primary_key)
+        final_df = clean_dataframe(pd.concat([annual_data, quarterly_data]), self._schema_dict[table_name]['columns'],
+                                   self._schema_dict[table_name]['primary_keys'])
         return final_df
 
     def _get_company_ratio(self, symbol: str, table_name: str) -> pd.DataFrame:
@@ -105,9 +106,9 @@ class FinanceAPI:
         quarterly_data['ticker'] = symbol
         annual_data = transform_df(annual_data)
         quarterly_data = transform_df(quarterly_data)
-        final_df = clean_dataframe(pd.concat([annual_data, quarterly_data]), self._schema_dict[table_name], self._primary_key)
+        final_df = clean_dataframe(pd.concat([annual_data, quarterly_data]), self._schema_dict[table_name]['columns'],
+                                   self._schema_dict[table_name]['primary_keys'])
         return final_df
-
 
     @staticmethod
     def _get_company_price_history_data(symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
@@ -119,7 +120,7 @@ class FinanceAPI:
         :return: Price history data as a DataFrame
         """
         quote = Quote(symbol=symbol)
-        price_history =quote.history(start=start_date, end=end_date)
+        price_history = quote.history(start=start_date, end=end_date)
         price_history['ticker'] = symbol
         # Rename time column to date
         price_history = price_history.rename(columns={'time': 'date'})
@@ -137,17 +138,19 @@ class FinanceAPI:
             "companies": (self._get_company_profile, {"symbol": ticker}),
             "cash_flows": (self._get_company_cash_flow, {"symbol": ticker, "table_name": "cash_flows"}),
             "balance_sheets": (self._get_company_balance_sheet, {"symbol": ticker, "table_name": "balance_sheets"}),
-            "income_statements": (self._get_company_income_statement, {"symbol": ticker, "table_name": "income_statements"}),
+            "income_statements": (self._get_company_income_statement,
+                                  {"symbol": ticker, "table_name": "income_statements"}),
             "ratios": (self._get_company_ratio, {"symbol": ticker, "table_name": "ratios"}),
-            "daily_prices": (self._get_company_price_history_data, {"symbol": ticker, "start_date": start_date, "end_date": end_date})
+            "daily_prices": (self._get_company_price_history_data,
+                             {"symbol": ticker, "start_date": start_date, "end_date": end_date})
         }
 
         response: dict[str, Any] = {"ticker": ticker}
 
-
         for key, (func, kwargs) in functions_to_call.items():
             response[key] = _fixed_delay_api_call(func, **kwargs)
         return response
+
 
 def _fixed_delay_api_call(function, **kwargs) -> pd.DataFrame:
     """Make API calls and pause the program

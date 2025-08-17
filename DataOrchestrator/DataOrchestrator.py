@@ -3,7 +3,8 @@ from typing import Any
 from datetime import datetime, timedelta
 from pathlib import Path
 from FinanceApi.FinanceApi import FinanceAPI
-from util.utility import make_folder, write_data_to_file, get_table_schemas_from_sql, prepare_year_table, prepare_dates_table, prepare_quarter_table
+from util.utility import make_folder, write_data_to_file, get_table_schemas_from_sql, prepare_year_table, \
+    prepare_dates_table, prepare_quarter_table
 from DBInterface.DBInterface import DBInterface
 import logging
 
@@ -15,6 +16,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 logger.setLevel("INFO")
+
 
 def call_api(api_client: FinanceAPI, stock: str, start_date: str, end_date: str) -> dict[str, pd.DataFrame]:
     """
@@ -32,8 +34,10 @@ def call_api(api_client: FinanceAPI, stock: str, start_date: str, end_date: str)
     else:
         return stock_data
 
+
 class DataOrchestrator:
-    def __init__(self, listing_df: pd.DataFrame, data_path: Path, db_url: str, db_schema_file: Path, load_from_file: bool = False):
+    def __init__(self, listing_df: pd.DataFrame, data_path: Path, db_url: str, db_schema_file: Path,
+                 load_from_file: bool = False):
         """
         Initialize a DataOrchestrator instance.
 
@@ -49,7 +53,8 @@ class DataOrchestrator:
         self._db_schema = get_table_schemas_from_sql(str(db_schema_file))
         self._load_from_file = load_from_file
 
-    def _fetch_data_worker(self, start_date: str, end_date: str, finance_api: FinanceAPI, ticker: str) -> dict[str, pd.DataFrame]:
+    def _fetch_data_worker(self, start_date: str, end_date: str, finance_api: FinanceAPI, ticker: str) -> dict[
+        str, pd.DataFrame]:
         """
         Worker function for fetching financial data for a given ticker.
 
@@ -74,6 +79,7 @@ class DataOrchestrator:
         try:
             logger.info(f"Downloading data for {ticker}")
             make_folder(self._cur_path / ticker)
+            make_folder(self._cur_path / ticker / end_date)
             stock_data = call_api(finance_api, ticker, start_date, end_date)
             return stock_data
         except Exception as e:
@@ -82,6 +88,22 @@ class DataOrchestrator:
 
     def _dump_data_to_db(self, table_name, df: pd.DataFrame):
         self._db_interface.dump_data_to_db(table_name, df)
+
+    def _delete_unnecessary_records_from_df(self, df: pd.DataFrame, table_name: str, ticker: str) -> pd.DataFrame:
+        """
+        Given these parameters, this function deletes unnecessary records from the dataframe
+        It has to get a list of records that exist in the database based on the ticker, table_name, and the primary keys of the table
+        It will then drop these records from the dataframe
+        Args:
+            df: Df to clean
+            table_name: table_name
+            ticker: ticker
+
+        Returns: A cleaned dataframe
+
+        """
+        primary_keys_records = self._db_interface.get_records_with_primary_keys(table_name, ticker)
+        return df.drop(primary_keys_records)
 
     def run(self):
         """
@@ -108,25 +130,33 @@ class DataOrchestrator:
             ticker = row['symbol']
             if self._load_from_file:
                 # Loop through the files in the folder
-                ticker_folder_path = self._cur_path / ticker
-                if ticker_folder_path.exists():
-                    stock_data_dictionary: dict[str, Any] = {'ticker': ticker}
-                    for file in ticker_folder_path.iterdir():
-                        stock_data = pd.read_csv(file, sep=',', encoding='utf-8-sig')
-                        stem = file.stem
-                        table_name = stem.split('_', maxsplit=1)[1]
-                        stock_data_dictionary[table_name] = stock_data
-                    stock_data_list.append(stock_data_dictionary)
+                cur_date_path = self._cur_path / ticker / end_date
+                stock_data_dictionary: dict[str, Any] = {'ticker': ticker}
+                # If the folder exists and has 6 files
+                if cur_date_path.exists():
+                    files_in_folder = list(cur_date_path.iterdir())
+                    if len(files_in_folder) == 6:
+                        for file in files_in_folder:
+                            stock_data = pd.read_csv(file, sep=',', encoding='utf-8-sig')
+                            stem = file.stem
+                            table_name = stem.split('_', maxsplit=1)[1]
+                            stock_data_dictionary[table_name] = stock_data
+                    else:
+                        stock_data_dictionary = self._fetch_data_worker(start_date, end_date, finance_api, ticker)
+                else:
+                    stock_data_dictionary = self._fetch_data_worker(start_date, end_date, finance_api, ticker)
+                stock_data_list.append(stock_data_dictionary)
             else:
-                stock_data = self._fetch_data_worker(start_date, end_date, finance_api,  ticker)
+                stock_data = self._fetch_data_worker(start_date, end_date, finance_api, ticker)
                 stock_data_list.append(stock_data)
         quarter_table = prepare_quarter_table()
-        year_table = prepare_year_table(list(range(2000, self._today.year + 100)))
-        start_date = datetime(year=2000, month=1, day=1)
-        end_date = datetime(year=2100, month=1, day=1)
-        dates_table = prepare_dates_table(list(pd.date_range(start_date,  end_date, freq='D')))
-        for table, table_name in zip([quarter_table, year_table, dates_table], ['quarters', 'years', 'dates']):
-            self._db_interface.dump_data_to_db(table_name, table)
+        year_table = prepare_year_table(list(range(2000, 2101)))
+        dates_table = prepare_dates_table(list(
+            pd.date_range(datetime(year=2000, month=1, day=1), datetime(year=2100, month=1, day=1), freq='D')))
+        for table, table_name, expected_rows in zip([quarter_table, year_table, dates_table], ['quarters', 'years', 'dates'], [5, 101, 36526]):
+            records_number = self._db_interface.count_records(table_name)
+            if records_number != expected_rows:
+                self._db_interface.dump_data_to_db(table_name, table)
         logger.info("Data writing process started.")
         for data in stock_data_list:
             ticker = data['ticker']
@@ -134,10 +164,14 @@ class DataOrchestrator:
             for k in sorted(data.keys(), key=lambda x: 'company_profile' in x, reverse=True):
                 df = data[k]
                 if isinstance(df, pd.DataFrame):
-                    file_path = symbol_folder_path / f"{ticker}_{k}.csv"
-                    if not self._load_from_file:
-                        write_data_to_file(file_path, df)
-                    self._dump_data_to_db(k, df)
+                    file_path = symbol_folder_path / end_date / f"{ticker}_{k}.csv"
+                    write_data_to_file(file_path, df)
+                    try:
+                        df = self._delete_unnecessary_records_from_df(df, k, ticker)
+                        self._dump_data_to_db(k, df)
+                    except Exception as e:
+                        logger.error(f"Failed to dump data for {ticker}: {e}")
+                        continue
         # Since all tables refer to the ticker in company_profile, we have to dump company_profile first
         # Sort the file_paths by this criteria: The file names that have "company_profile" in the name will be dumped first
 
