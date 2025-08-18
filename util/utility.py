@@ -232,3 +232,4 @@ def get_table_schemas_from_sql(filepath):
         return None
 
     return table_schemas
+

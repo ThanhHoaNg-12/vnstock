@@ -1,7 +1,7 @@
 import psycopg
 from psycopg.connection import Connection
 from psycopg import sql
-from psycopg.rows import dict_row, Row
+from psycopg.rows import Row
 from io import StringIO
 import pandas as pd
 from pathlib import Path

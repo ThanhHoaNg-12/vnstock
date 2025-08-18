@@ -89,7 +89,7 @@ class DataOrchestrator:
     def _dump_data_to_db(self, table_name, df: pd.DataFrame):
         self._db_interface.dump_data_to_db(table_name, df)
 
-    def _delete_unnecessary_records_from_df(self, df: pd.DataFrame, table_name: str, ticker: str) -> pd.DataFrame:
+    def _delete_unnecessary_records_from_df(self, df: pd.DataFrame, table_name: str, ticker: str, primary_keys: list[str]) -> pd.DataFrame:
         """
         Given these parameters, this function deletes unnecessary records from the dataframe
         It has to get a list of records that exist in the database based on the ticker, table_name, and the primary keys of the table
@@ -98,12 +98,30 @@ class DataOrchestrator:
             df: Df to clean
             table_name: table_name
             ticker: ticker
+            primary_keys: primary keys
 
         Returns: A cleaned dataframe
 
         """
         primary_keys_records = self._db_interface.get_records_with_primary_keys(table_name, ticker)
-        return df.drop(primary_keys_records)
+        if not primary_keys_records:
+            return df
+        db_df = pd.DataFrame(primary_keys_records, columns=df.columns)
+
+        # Define the primary key columns for joining.
+        # For financial data, this is typically a combination of ticker, year, and quarter.
+
+        if 'date' in primary_keys:
+            df['date'] = pd.to_datetime(df['date'])
+            db_df['date'] = pd.to_datetime(db_df['date'])
+        # Use a left merge with an indicator to identify rows from `df` that are not in `db_df`.
+        # This is how you perform a left anti-join in pandas.
+        merged_df = df.merge(db_df[primary_keys], on=primary_keys, how='left', indicator=True)
+
+        # Filter to keep only the rows that are unique to the left DataFrame (`df`).
+        cleaned_df = merged_df[merged_df['_merge'] == 'left_only'].drop(columns=['_merge'])
+
+        return cleaned_df
 
     def run(self):
         """
@@ -167,7 +185,7 @@ class DataOrchestrator:
                     file_path = symbol_folder_path / end_date / f"{ticker}_{k}.csv"
                     write_data_to_file(file_path, df)
                     try:
-                        df = self._delete_unnecessary_records_from_df(df, k, ticker)
+                        df = self._delete_unnecessary_records_from_df(df, k, ticker, self._db_schema[k]['primary_keys'])
                         self._dump_data_to_db(k, df)
                     except Exception as e:
                         logger.error(f"Failed to dump data for {ticker}: {e}")
