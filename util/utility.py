@@ -142,7 +142,7 @@ def prepare_year_table(years: list[int]) -> pd.DataFrame:
     year = pd.DataFrame({'year': years})
     return year
 
-def prepare_dates_table(dates_list: list[str]) -> pd.DataFrame:
+def prepare_dates_table(dates_list: list[pd.Timestamp]) -> pd.DataFrame:
     # Prepare dates table
     dates = pd.DataFrame({'date': dates_list})
     # add the year column

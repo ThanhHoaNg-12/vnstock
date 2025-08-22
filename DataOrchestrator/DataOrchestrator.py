@@ -86,9 +86,6 @@ class DataOrchestrator:
             logger.error(f"Failed to fetch data for {ticker}: {e}")
             return {}
 
-    def _dump_data_to_db(self, table_name, df: pd.DataFrame):
-        self._db_interface.dump_data_to_db(table_name, df)
-
     def _delete_unnecessary_records_from_df(self, df: pd.DataFrame, table_name: str, ticker: str, primary_keys: list[str]) -> pd.DataFrame:
         """
         Given these parameters, this function deletes unnecessary records from the dataframe
@@ -186,7 +183,7 @@ class DataOrchestrator:
                     write_data_to_file(file_path, df)
                     try:
                         df = self._delete_unnecessary_records_from_df(df, k, ticker, self._db_schema[k]['primary_keys'])
-                        self._dump_data_to_db(k, df)
+                        self._db_interface.dump_data_to_db(k, df)
                     except Exception as e:
                         logger.error(f"Failed to dump data for {ticker}: {e}")
                         continue
