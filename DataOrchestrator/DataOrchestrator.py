@@ -173,9 +173,12 @@ class DataOrchestrator:
             if records_number != expected_rows:
                 self._db_interface.dump_data_to_db(table_name, table)
         logger.info("Data writing process started.")
+        table_names = (k for k in stock_data_list[0].keys() if k != 'ticker')
+        tables_to_dump = {k: pd.DataFrame() for k in table_names}
         for data in stock_data_list:
             ticker = data['ticker']
             symbol_folder_path = self._cur_path / ticker
+            # Sort the file_paths by this criteria: The file names that have "company_profile" in the name will be dumped first
             for k in sorted(data.keys(), key=lambda x: 'company_profile' in x, reverse=True):
                 df = data[k]
                 if isinstance(df, pd.DataFrame):
@@ -183,13 +186,15 @@ class DataOrchestrator:
                     write_data_to_file(file_path, df)
                     try:
                         df = self._delete_unnecessary_records_from_df(df, k, ticker, self._db_schema[k]['primary_keys'])
-                        self._db_interface.dump_data_to_db(k, df)
+                        tables_to_dump[k] = pd.concat([tables_to_dump[k], df], ignore_index=True)
                     except Exception as e:
-                        logger.error(f"Failed to dump data for {ticker}: {e}")
+                        logger.error(f"Failed with exception: {e}")
                         continue
         # Since all tables refer to the ticker in company_profile, we have to dump company_profile first
-        # Sort the file_paths by this criteria: The file names that have "company_profile" in the name will be dumped first
 
+        for table_name, table in tables_to_dump.items():
+            self._db_interface.dump_data_to_db(table_name, table) 
         logger.info("Data writing process complete.")
+
 
         self._db_interface.close_connection()
