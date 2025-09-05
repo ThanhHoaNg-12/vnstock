@@ -29,8 +29,10 @@ def write_data_to_file(stock_data_file: Path, stock_data: pd.DataFrame) -> None:
     :param stock_data:
     :return:  None
     """
-    logger.info(f"Writing data to {stock_data_file=}")
-    stock_data.to_csv(stock_data_file, index=False, encoding='utf-8-sig')
+    if not stock_data_file.exists():
+        logger.info(f"Writing data to {stock_data_file=}")
+        stock_data.to_csv(stock_data_file, index=False, encoding='utf-8-sig')
+
 
 
 def get_banks_listings(testing: bool = False) -> pd.DataFrame:

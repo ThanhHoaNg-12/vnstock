@@ -45,6 +45,7 @@ class DBInterface:
         The csv file must have the same column order as the table. The csv file must have a header row.
         This function commits the transaction after dumping the data.
         """
+        self._logger.info(f"Dumping data to {table_name=}")
         with self._conn.cursor() as cur:
             with cur.copy(sql.SQL("COPY {} FROM STDIN WITH CSV HEADER DELIMITER ','").format(
                 sql.Identifier(table_name)
