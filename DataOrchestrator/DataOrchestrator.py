@@ -3,8 +3,7 @@ from typing import Any
 from datetime import datetime, timedelta
 from pathlib import Path
 from FinanceApi.FinanceApi import FinanceAPI
-from util.utility import make_folder, write_data_to_file, get_table_schemas_from_sql, prepare_year_table, \
-    prepare_dates_table, prepare_quarter_table
+from util.utility import make_folder, write_data_to_file, get_table_schemas_from_sql
 from DBInterface.DBInterface import DBInterface
 import logging
 
@@ -164,14 +163,6 @@ class DataOrchestrator:
             else:
                 stock_data = self._fetch_data_worker(start_date, end_date, finance_api, ticker)
                 stock_data_list.append(stock_data)
-        quarter_table = prepare_quarter_table()
-        year_table = prepare_year_table(list(range(2000, 2101)))
-        dates_table = prepare_dates_table(list(
-            pd.date_range(datetime(year=2000, month=1, day=1), datetime(year=2100, month=1, day=1), freq='D')))
-        for table, table_name, expected_rows in zip([quarter_table, year_table, dates_table], ['quarters', 'years', 'dates'], [5, 101, 36526]):
-            records_number = self._db_interface.count_records(table_name)
-            if records_number != expected_rows:
-                self._db_interface.dump_data_to_db(table_name, table)
         logger.info("Data writing process started.")
         table_names = (k for k in stock_data_list[0].keys() if k != 'ticker')
         tables_to_dump = {k: pd.DataFrame() for k in table_names}
@@ -179,7 +170,7 @@ class DataOrchestrator:
             ticker = data['ticker']
             symbol_folder_path = self._cur_path / ticker
             # Sort the file_paths by this criteria: The file names that have "company_profile" in the name will be dumped first
-            for k in sorted(data.keys(), key=lambda x: 'company_profile' in x, reverse=True):
+            for k in sorted(data.keys(), key=lambda x: 'company' in x, reverse=True):
                 df = data[k]
                 if isinstance(df, pd.DataFrame):
                     file_path = symbol_folder_path / end_date / f"{ticker}_{k}.csv"
@@ -192,7 +183,7 @@ class DataOrchestrator:
                         continue
         # Since all tables refer to the ticker in company_profile, we have to dump company_profile first
 
-        for table_name, table in tables_to_dump.items():
+        for table_name, table in sorted(tables_to_dump.items(), key=lambda x: 'company' in x[0], reverse=True):
             self._db_interface.dump_data_to_db(table_name, table) 
         logger.info("Data writing process complete.")
 

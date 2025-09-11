@@ -22,19 +22,20 @@ class FinanceAPI:
         self._source = 'TCBS'
         self._schema_dict = schema_dict
 
-    @staticmethod
-    def _get_company_profile(symbol: str) -> pd.DataFrame:
+    def _get_company_profile(self, symbol: str, table_name: str) -> pd.DataFrame:
         """
         Get company profile data
 
         :param symbol: Ticker symbol of the company
         :return: Company profile data as a DataFrame
         """
-        company = Company(symbol=symbol, source="vci")
+        company = Company(symbol=symbol, source=self._source)
         # Rename symbol to ticker
         company_df = company.overview()
         company_df = company_df.rename(columns={'symbol': 'ticker'})
-        return company_df
+        final_df = clean_dataframe(company_df, self._schema_dict[table_name]['columns'],
+                                     self._schema_dict[table_name]['primary_keys'])
+        return final_df
 
     def _get_company_cash_flow(self, symbol: str, table_name: str) -> pd.DataFrame:
         """
@@ -135,14 +136,14 @@ class FinanceAPI:
         :return: A dictionary of dataframes
         """
         functions_to_call = {
-            "companies": (self._get_company_profile, {"symbol": ticker}),
-            "cash_flows": (self._get_company_cash_flow, {"symbol": ticker, "table_name": "cash_flows"}),
-            "balance_sheets": (self._get_company_balance_sheet, {"symbol": ticker, "table_name": "balance_sheets"}),
-            "income_statements": (self._get_company_income_statement,
-                                  {"symbol": ticker, "table_name": "income_statements"}),
-            "ratios": (self._get_company_ratio, {"symbol": ticker, "table_name": "ratios"}),
-            "daily_prices": (self._get_company_price_history_data,
-                             {"symbol": ticker, "start_date": start_date, "end_date": end_date})
+            "company": (self._get_company_profile, {"symbol": ticker, "table_name": "company"}),
+            "cash_flow": (self._get_company_cash_flow, {"symbol": ticker, "table_name": "cash_flow"}),
+            "balance_sheet": (self._get_company_balance_sheet, {"symbol": ticker, "table_name": "balance_sheet"}),
+            "income_statement": (self._get_company_income_statement,
+                                 {"symbol": ticker, "table_name": "income_statement"}),
+            "ratio": (self._get_company_ratio, {"symbol": ticker, "table_name": "ratio"}),
+            "daily_price": (self._get_company_price_history_data,
+                            {"symbol": ticker, "start_date": start_date, "end_date": end_date})
         }
 
         response: dict[str, Any] = {"ticker": ticker}

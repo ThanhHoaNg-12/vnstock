@@ -1,60 +1,48 @@
 
 -- The `companies` table stores static information about each company.
 -- 'ticker' serves as the primary key.
-CREATE TABLE IF NOT EXISTS companies (
+CREATE TABLE IF NOT EXISTS company (
     ticker VARCHAR(10),
-    id VARCHAR(50) NULL,
-    issue_share BIGINT NULL,
-    history TEXT NULL,
-    company_profile TEXT NULL,
-    icb_name3 VARCHAR(50) NULL,
-    icb_name2 VARCHAR(50) NULL,
-    icb_name4 VARCHAR(50) NULL,
-    financial_ratio_issue_share BIGINT NULL,
-    charter_capital BIGINT NULL,
+    exchange VARCHAR(10) NULL,
+    industry VARCHAR(50) NULL,
+    company_type varchar(30) NULL,
+    no_shareholders BIGINT NULL,
+    foreign_percent FLOAT NULL,
+    outstanding_share FLOAT NULL,
+    issue_share FLOAT NULL,
+    established_year INT NULL,
+    no_employees INT NULL,
+    stock_rating FLOAT NULL,
+    delta_in_week FLOAT NULL,
+    delta_in_month FLOAT NULL,
+    delta_in_year FLOAT NULL,
+    short_name varchar(500) NULL,
+    website varchar(500) NULL,
+    industry_id INT NULL,
+    industry_id_v2 INT NULL,
     PRIMARY KEY (ticker)
 );
 
--- The `years` table stores unique years for time-based analysis.
-CREATE TABLE IF NOT EXISTS years (
-    year INT,
-    PRIMARY KEY (year)
-);
-
--- The `quarters` table stores unique quarters.
-CREATE TABLE IF NOT EXISTS quarters (
-    quarter INT,
-    PRIMARY KEY (quarter)
-);
-
--- The `dates` table stores unique dates, including a foreign key to the `years` table.
-CREATE TABLE IF NOT EXISTS dates (
-    date DATE,
-    year INT NOT NULL,
-    PRIMARY KEY (date),
-    FOREIGN KEY (year) REFERENCES years(year) ON DELETE CASCADE
-);
 
 -- =========================================================================
 -- FACT TABLES
 -- =========================================================================
 
 -- The `daily_prices` table holds daily trading data, linking to `companies` and `dates`.
-CREATE TABLE IF NOT EXISTS daily_prices (
+CREATE TABLE IF NOT EXISTS daily_price (
     date DATE NOT NULL,
-    open FLOAT NULL,
-    high FLOAT NULL,
-    low FLOAT NULL,
-    close FLOAT NULL,
-    volume BIGINT NULL,
+    open FLOAT NOT NULL,
+    high FLOAT NOT NULL,
+    low FLOAT NOT NULL,
+    close FLOAT NOT NULL,
+    volume BIGINT NOT NULL,
     ticker VARCHAR(10),
     PRIMARY KEY (ticker, date),
-    FOREIGN KEY (ticker) REFERENCES companies(ticker) ON DELETE CASCADE,
-    FOREIGN KEY (date) REFERENCES dates(date) ON DELETE CASCADE
+    FOREIGN KEY (ticker) REFERENCES company(ticker) ON DELETE CASCADE
 );
 
 -- The `balance_sheets` table contains quarterly balance sheet data, linking to `companies`, `years`, and `quarters`.
-CREATE TABLE IF NOT EXISTS balance_sheets (
+CREATE TABLE IF NOT EXISTS balance_sheet (
     ticker VARCHAR(10),
     year INT NOT NULL,
     quarter INT NOT NULL,
@@ -86,13 +74,11 @@ CREATE TABLE IF NOT EXISTS balance_sheets (
     minor_share_holder_profit FLOAT NULL,
     payable FLOAT NULL,
     PRIMARY KEY (ticker, year, quarter),
-    FOREIGN KEY (ticker) REFERENCES companies(ticker) ON DELETE CASCADE,
-    FOREIGN KEY (year) REFERENCES years(year) ON DELETE CASCADE,
-    FOREIGN KEY (quarter) REFERENCES quarters(quarter) ON DELETE CASCADE
+    FOREIGN KEY (ticker) REFERENCES company(ticker) ON DELETE CASCADE
 );
 
 -- The `cash_flows` table stores quarterly cash flow data, linking to `companies`, `years`, and `quarters`.
-CREATE TABLE IF NOT EXISTS cash_flows (
+CREATE TABLE IF NOT EXISTS cash_flow (
     ticker VARCHAR(10),
     year INT NOT NULL,
     quarter INT NOT NULL,
@@ -102,13 +88,11 @@ CREATE TABLE IF NOT EXISTS cash_flows (
     from_sale FLOAT NULL,
     free_cash_flow FLOAT NULL,
     PRIMARY KEY (ticker, year, quarter),
-    FOREIGN KEY (ticker) REFERENCES companies(ticker) ON DELETE CASCADE,
-    FOREIGN KEY (year) REFERENCES years(year) ON DELETE CASCADE,
-    FOREIGN KEY (quarter) REFERENCES quarters(quarter) ON DELETE CASCADE
+    FOREIGN KEY (ticker) REFERENCES company(ticker) ON DELETE CASCADE
 );
 
 -- The `income_statements` table holds quarterly income statement data, linking to `companies`, `years`, and `quarters`.
-CREATE TABLE IF NOT EXISTS income_statements (
+CREATE TABLE IF NOT EXISTS income_statement (
     ticker VARCHAR(10),
     year INT NOT NULL,
     quarter INT NOT NULL,
@@ -130,13 +114,11 @@ CREATE TABLE IF NOT EXISTS income_statements (
     quarter_operation_profit_growth FLOAT NULL,
     quarter_share_holder_income_growth FLOAT NULL,
     PRIMARY KEY (ticker, year, quarter),
-    FOREIGN KEY (ticker) REFERENCES companies(ticker) ON DELETE CASCADE,
-    FOREIGN KEY (year) REFERENCES years(year) ON DELETE CASCADE,
-    FOREIGN KEY (quarter) REFERENCES quarters(quarter) ON DELETE CASCADE
+    FOREIGN KEY (ticker) REFERENCES company(ticker) ON DELETE CASCADE
 );
 
 -- The `ratios` table stores quarterly financial ratio data, linking to `companies`, `years`, and `quarters`.
-CREATE TABLE IF NOT EXISTS ratios (
+CREATE TABLE IF NOT EXISTS ratio (
     ticker VARCHAR(10),
     year INT NOT NULL,
     quarter INT NOT NULL,
@@ -171,7 +153,5 @@ CREATE TABLE IF NOT EXISTS ratios (
     book_value_per_share_change FLOAT NULL,
     credit_growth FLOAT NULL,
     PRIMARY KEY (ticker, year, quarter),
-    FOREIGN KEY (ticker) REFERENCES companies(ticker) ON DELETE CASCADE,
-    FOREIGN KEY (year) REFERENCES years(year) ON DELETE CASCADE,
-    FOREIGN KEY (quarter) REFERENCES quarters(quarter) ON DELETE CASCADE
+    FOREIGN KEY (ticker) REFERENCES company(ticker) ON DELETE CASCADE
 );
