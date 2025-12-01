@@ -17,6 +17,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.setLevel("INFO")
 
+# Explicit set of table names that should be upserted instead of plain inserted.
+# Use lowercase names that match the SQL schema: e.g. 'company', 'company_profile', 'ratio', 'daily_price'
+UPSERT_TABLES = {"company_profile", "ratio", "daily_price"}
+
 # Hàm gọi API để lấy dữ liệu cổ phiếu
 def call_api(api_client: FinanceAPI, stock: str, start_date: str, end_date: str) -> dict[str, pd.DataFrame]:
     """
@@ -153,7 +157,7 @@ class DataOrchestrator:
         The method logs the progress and completion of data fetching and writing operations.
         """
         # Khởi tạo FinanceAPI để gọi API lấy dữ liệu
-        finance_api = FinanceAPI(schema_dict=self._db_schema)
+        finance_api = FinanceAPI(schema_dict=(self._db_schema or {}))
         # Tính toán khoảng thời gian từ 11 năm trước đến ngày hiện tại
         eleven_years_ago = self._today - timedelta(days=365 * 11)
         start_date = eleven_years_ago.strftime('%Y-%m-%d')
@@ -207,12 +211,26 @@ class DataOrchestrator:
                 df = data[k]
                 # Kiểm tra nếu df là một DataFrame hợp lệ
                 if isinstance(df, pd.DataFrame):
-                    #Lưu file ra ổ cứng 
+                    # Lưu file ra ổ cứng
                     file_path = symbol_folder_path / end_date / f"{ticker}_{k}.csv"
                     write_data_to_file(file_path, df)
-                    #lọc trùng và gom vào bảng chung 
+
+                    # Determine primary keys for this table from schema
+                    primary_keys = (self._db_schema or {}).get(k, {}).get('primary_keys', [])
+
+                    # For tables that should be upserted (company_profile / company and ratio),
+                    # keep all rows (we need to update existing rows), but drop duplicates within
+                    # the incoming dataframe based on primary keys.
                     try:
-                        df = self._delete_unnecessary_records_from_df(df, k, ticker, self._db_schema[k]['primary_keys']) 
+                        if k.lower() in UPSERT_TABLES:
+                            if primary_keys:
+                                df = df.drop_duplicates(subset=primary_keys)
+                            else:
+                                df = df.drop_duplicates()
+                        else:
+                            # For plain inserts, filter out records that already exist in DB
+                            df = self._delete_unnecessary_records_from_df(df, k, ticker, primary_keys)
+
                         tables_to_dump[k] = pd.concat([tables_to_dump[k], df], ignore_index=True)
                     except Exception as e:
                         logger.error(f"Failed with exception: {e}")
@@ -220,7 +238,17 @@ class DataOrchestrator:
         # Since all tables refer to the ticker in company_profile, we have to dump company_profile first
         # Sắp xếp một lần nữa để đảm bảo bảng company_profile được ghi vào cơ sở dữ liệu trước
         for table_name, table in sorted(tables_to_dump.items(), key=lambda x: 'company' in x[0], reverse=True):
-            self._db_interface.dump_data_to_db(table_name, table) 
+            # Skip empty tables
+            if table.empty:
+                continue
+
+            primary_keys = (self._db_schema or {}).get(table_name, {}).get('primary_keys', [])
+
+            # Use upsert for company/profile related tables and ratio tables
+            if table_name.lower() in UPSERT_TABLES:
+                self._db_interface.upsert_data_to_db(table_name, table, primary_keys)
+            else:
+                self._db_interface.dump_data_to_db(table_name, table)
         # Hoàn tất quá trình ghi dữ liệu
         logger.info("Data writing process complete.")
 
