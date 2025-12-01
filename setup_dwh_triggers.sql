@@ -2,27 +2,29 @@
 -- PHẦN 1: CÁC HÀM TIỆN ÍCH VÀ HÀM XỬ LÝ (TRIGGER FUNCTIONS)
 -- ==================================================
 
--- 1.1. Hàm tiện ích tính ngày cuối quý (Dùng chung cho các báo cáo tài chính)
+-- 1.1. Hàm tiện ích tính ngày cuối quý (ĐÃ SỬA ĐỂ HỖ TRỢ QUÝ 5)
 CREATE OR REPLACE FUNCTION dwh.get_quarter_end_date_key(p_year INT, p_quarter INT)
 RETURNS INT AS $$
 BEGIN
-    -- Chỉ xử lý dữ liệu quý (1, 2, 3, 4), bỏ qua dữ liệu năm (5)
-    IF p_quarter NOT IN (1, 2, 3, 4) THEN
+    -- SỬA ĐỔI: Cho phép xử lý cả quý 5 (cả năm)
+    -- Nếu quý không nằm trong 1, 2, 3, 4, 5 thì mới trả về NULL
+    IF p_quarter NOT IN (1, 2, 3, 4, 5) THEN
         RETURN NULL;
     END IF;
 
     -- Ghép năm với ngày tháng cố định của cuối quý để tạo date_key (YYYYMMDD)
     RETURN (p_year || CASE
-        WHEN p_quarter = 1 THEN '0331'
-        WHEN p_quarter = 2 THEN '0630'
-        WHEN p_quarter = 3 THEN '0930'
-        WHEN p_quarter = 4 THEN '1231'
+        WHEN p_quarter = 1 THEN '0331' -- Cuối quý 1
+        WHEN p_quarter = 2 THEN '0630' -- Cuối quý 2
+        WHEN p_quarter = 3 THEN '0930' -- Cuối quý 3
+        -- SỬA ĐỔI: Cả Quý 4 và Cả năm (5) đều lấy ngày 31/12
+        WHEN p_quarter IN (4, 5) THEN '1231'
     END)::INT;
 END;
 $$ LANGUAGE plpgsql;
 
 
--- 1.2. Hàm xử lý cho bảng Giá Hàng Ngày (DAILY_PRICE)
+-- 1.2. Hàm xử lý cho bảng Giá Hàng Ngày (DAILY_PRICE) - (Giữ nguyên)
 CREATE OR REPLACE FUNCTION dwh.etl_daily_price_trigger_func()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -46,15 +48,14 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- 1.3. Hàm xử lý cho bảng Chỉ Số Tài Chính (RATIO)
--- (Đây là đoạn bạn bị viết thiếu, mình đã bổ sung đầy đủ)
+-- 1.3. Hàm xử lý cho bảng Chỉ Số Tài Chính (RATIO) - (Giữ nguyên)
 CREATE OR REPLACE FUNCTION dwh.etl_ratio_trigger_func()
 RETURNS TRIGGER AS $$
 DECLARE
     v_date_key INT;
     v_company_key INT;
 BEGIN
-    -- Tính date_key cuối quý bằng hàm tiện ích
+    -- Tính date_key cuối quý bằng hàm tiện ích (đã được cập nhật để hiểu quý 5)
     v_date_key := dwh.get_quarter_end_date_key(NEW.year, NEW.quarter);
     -- Tìm khóa công ty
     SELECT company_key INTO v_company_key FROM dwh.dim_company WHERE ticker = NEW.ticker;
@@ -72,7 +73,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- 1.4. Hàm xử lý cho bảng Cân Đối Kế Toán (BALANCE_SHEET)
+-- 1.4. Hàm xử lý cho bảng Cân Đối Kế Toán (BALANCE_SHEET) - (Giữ nguyên)
 CREATE OR REPLACE FUNCTION dwh.etl_balance_sheet_trigger_func()
 RETURNS TRIGGER AS $$
 DECLARE v_date_key INT; v_company_key INT;
@@ -92,7 +93,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- 1.5. Hàm xử lý cho bảng Kết Quả Kinh Doanh (INCOME_STATEMENT)
+-- 1.5. Hàm xử lý cho bảng Kết Quả Kinh Doanh (INCOME_STATEMENT) - (Giữ nguyên)
 CREATE OR REPLACE FUNCTION dwh.etl_income_statement_trigger_func()
 RETURNS TRIGGER AS $$
 DECLARE v_date_key INT; v_company_key INT;
@@ -112,7 +113,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- 1.6. Hàm xử lý cho bảng Lưu Chuyển Tiền Tệ (CASH_FLOW)
+-- 1.6. Hàm xử lý cho bảng Lưu Chuyển Tiền Tệ (CASH_FLOW) - (Giữ nguyên)
 CREATE OR REPLACE FUNCTION dwh.etl_cash_flow_trigger_func()
 RETURNS TRIGGER AS $$
 DECLARE v_date_key INT; v_company_key INT;
@@ -134,6 +135,7 @@ $$ LANGUAGE plpgsql;
 
 -- ==================================================
 -- PHẦN 2: GÀI BẪY (TẠO TRIGGERS) TRÊN CÁC BẢNG THÔ
+-- (Phần này giữ nguyên để đảm bảo trigger được tạo nếu chưa có)
 -- ==================================================
 
 -- Trigger cho bảng daily_price
