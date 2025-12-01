@@ -19,7 +19,7 @@ logger.setLevel("INFO")
 
 # Explicit set of table names that should be upserted instead of plain inserted.
 # Use lowercase names that match the SQL schema: e.g. 'company', 'company_profile', 'ratio', 'daily_price'
-UPSERT_TABLES = {"company_profile", "ratio", "daily_price"}
+UPSERT_TABLES = {"company", "ratio", "daily_price"}
 
 # Hàm gọi API để lấy dữ liệu cổ phiếu
 def call_api(api_client: FinanceAPI, stock: str, start_date: str, end_date: str) -> dict[str, pd.DataFrame]:
