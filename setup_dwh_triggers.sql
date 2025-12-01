@@ -352,7 +352,6 @@ BEGIN
         exchange_key = EXCLUDED.exchange_key,
         industry_key = EXCLUDED.industry_key;
 
-    PERFORM dwh.log_etl_event('sync_dim_company', 'company', NEW.ticker, NULL, to_jsonb(NEW));
     RETURN NEW;
 EXCEPTION WHEN OTHERS THEN
     PERFORM dwh.log_etl_event('sync_dim_company', 'company', NEW.ticker, SQLERRM, to_jsonb(NEW));
