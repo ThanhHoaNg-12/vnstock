@@ -52,7 +52,7 @@ SELECT
     CASE WHEN EXTRACT(ISODOW FROM datum) IN (6, 7) THEN TRUE ELSE FALSE END AS is_weekend
 FROM generate_series(
     '2000-01-01'::timestamp,  -- Ngày bắt đầu cố định
-    CURRENT_DATE::timestamp,  -- Ngày kết thúc là HÔM NAY (tự động cập nhật khi chạy lệnh)
+    '3000-01-01'::timestamp,  -- Ngày kết thúc là 1000 năm nữa (tự động cập nhật khi chạy lệnh)
     '1 day'::interval         -- Bước nhảy là 1 ngày
 ) AS datum
 ORDER BY 1;
