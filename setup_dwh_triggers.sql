@@ -16,24 +16,35 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 1.1. Utility: compute quarter end date_key (supports quarter = 5 as year-end)
+-- 1.1. Utility: Get date_key for quarter end date using dim_date and dim_quarter
+-- This function looks up the YYYYMMDD date_key for the end date of a given quarter
+-- Quarter 1 -> March 31, Quarter 2 -> June 30, Quarter 3 -> Sept 30, Quarter 4 & 5 -> Dec 31
 CREATE OR REPLACE FUNCTION dwh.get_quarter_end_date_key(p_year INT, p_quarter INT)
 RETURNS INT AS $$
+DECLARE
+    v_date_key INT;
+    v_quarter_end_date DATE;
 BEGIN
-    -- SỬA ĐỔI: Cho phép xử lý cả quý 5 (cả năm)
-    -- Nếu quý không nằm trong 1, 2, 3, 4, 5 thì mới trả về NULL
+    -- Validate quarter
     IF p_quarter NOT IN (1, 2, 3, 4, 5) THEN
         RETURN NULL;
     END IF;
 
-    -- Ghép năm với ngày tháng cố định của cuối quý để tạo date_key (YYYYMMDD)
-    RETURN (p_year || CASE
-        WHEN p_quarter = 1 THEN '0331' -- Cuối quý 1
-        WHEN p_quarter = 2 THEN '0630' -- Cuối quý 2
-        WHEN p_quarter = 3 THEN '0930' -- Cuối quý 3
-        -- SỬA ĐỔI: Cả Quý 4 và Cả năm (5) đều lấy ngày 31/12
-        WHEN p_quarter IN (4, 5) THEN '1231'
-    END)::INT;
+    -- Compute the quarter-end date based on quarter number
+    v_quarter_end_date := CASE
+        WHEN p_quarter = 1 THEN make_date(p_year, 3, 31)
+        WHEN p_quarter = 2 THEN make_date(p_year, 6, 30)
+        WHEN p_quarter = 3 THEN make_date(p_year, 9, 30)
+        WHEN p_quarter IN (4, 5) THEN make_date(p_year, 12, 31)
+    END;
+
+    -- Look up the date_key from dim_date
+    SELECT date_key INTO v_date_key
+    FROM dwh.dim_date
+    WHERE full_date = v_quarter_end_date
+    LIMIT 1;
+
+    RETURN v_date_key;
 END;
 $$ LANGUAGE plpgsql;
 

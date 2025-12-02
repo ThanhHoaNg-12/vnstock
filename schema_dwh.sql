@@ -11,7 +11,9 @@ DROP TABLE IF EXISTS dwh.dim_company CASCADE;
 DROP TABLE IF EXISTS dwh.dim_date CASCADE;
 DROP TABLE IF EXISTS dwh.dim_industry CASCADE;
 DROP TABLE IF EXISTS dwh.dim_exchange CASCADE;
-
+DROP TABLE IF EXISTS dwh.dim_quarter CASCADE;
+DROP TABLE IF EXISTS dwh.dim_year CASCADE;
+DROP TABLE IF EXISTS dwh.etl_trigger_log CASCADE;
 -- ==================================================================
 -- BƯỚC 1: XÓA BẢNG LỊCH CŨ (VÀ CÁC BẢNG FACT LIÊN QUAN DO CASCADE)
 -- ==================================================================
@@ -20,42 +22,82 @@ DROP TABLE IF EXISTS dwh.dim_exchange CASCADE;
 -- ==================================================================
 -- BƯỚC 2: TẠO LẠI CẤU TRÚC BẢNG
 -- ==================================================================
+CREATE TABLE dwh.dim_year (
+    year_key INT PRIMARY KEY,   -- Ví dụ: 2023
+    year_number INT NOT NULL,   -- 2023
+    is_leap_year BOOLEAN NOT NULL -- Năm nhuận hay không
+);
+
+-- 2.2. Nạp dữ liệu tự động (Từ 2000 đến 2035)
+INSERT INTO dwh.dim_year (year_key, year_number, is_leap_year)
+SELECT 
+    y AS year_key,
+    y AS year_number,
+    (y % 4 = 0 AND y % 100 <> 0) OR (y % 400 = 0) AS is_leap_year
+FROM generate_series(2000, 3000) AS y;
+
+
+-- ==================================================
+-- BƯỚC 3: TẠO VÀ NẠP DỮ LIỆU CHO DIM_QUARTER (ĐÃ SỬA LỖI)
+-- ==================================================
+-- 3.1. Tạo bảng
+CREATE TABLE dwh.dim_quarter (
+    quarter_key INT PRIMARY KEY,    -- Ví dụ: 20231, 20232
+    year_key INT NOT NULL REFERENCES dwh.dim_year(year_key), -- Khóa ngoại
+    quarter_number INT NOT NULL,    -- 1, 2, 3, 4
+    quarter_name VARCHAR(20) NOT NULL -- 'Quý 1 2023', ...
+);
+
+-- 3.2. Nạp dữ liệu tự động (SỬA LỖI Ở ĐÂY)
+INSERT INTO dwh.dim_quarter (quarter_key, year_key, quarter_number, quarter_name)
+SELECT 
+    -- Ép kiểu sang TEXT trước khi nối, sau đó ép ngược lại về INT
+    (y.year_number::TEXT || q::TEXT)::INT AS quarter_key, 
+    y.year_key,
+    q AS quarter_number,
+    'Quý ' || q || ' ' || y.year_number AS quarter_name
+FROM dwh.dim_year y
+CROSS JOIN generate_series(1, 4) AS q -- Tạo tổ hợp mỗi năm có 4 quý
+ORDER BY 1;
+
 CREATE TABLE dwh.dim_date (
     date_key INT PRIMARY KEY,         -- YYYYMMDD
     full_date DATE NOT NULL UNIQUE,
+    -- Khóa ngoại trỏ lên bảng Quý
+    quarter_key INT NOT NULL REFERENCES dwh.dim_quarter(quarter_key),
     day_of_week INT NOT NULL,
     day_name VARCHAR(20) NOT NULL,
     day_of_month INT NOT NULL,
     month INT NOT NULL,
     month_name VARCHAR(20) NOT NULL,
-    quarter INT NOT NULL,
-    year INT NOT NULL,
     is_weekend BOOLEAN NOT NULL,
     is_trading_day BOOLEAN NOT NULL DEFAULT TRUE
 );
 
--- ==================================================================
--- BƯỚC 3: NẠP DỮ LIỆU ĐỘNG (TỪ 2000-01-01 ĐẾN CURRENT_DATE)
--- ==================================================================
--- Sử dụng generate_series với timestamp để tạo dải ngày động
+-- 4.2. Nạp dữ liệu tự động (SỬA LỖI Ở ĐÂY)
 INSERT INTO dwh.dim_date
 SELECT
     TO_CHAR(datum, 'yyyymmdd')::INT AS date_key,
-    datum::DATE AS full_date, -- Ép kiểu từ timestamp về date
+    datum::DATE AS full_date,
+    -- Tính toán khóa ngoại quarter_key (YYYYQ) - Cần ép kiểu TEXT
+    (EXTRACT(YEAR FROM datum)::TEXT || EXTRACT(QUARTER FROM datum)::TEXT)::INT AS quarter_key,
+    
     EXTRACT(ISODOW FROM datum) AS day_of_week,
     TO_CHAR(datum, 'Day') AS day_name,
     EXTRACT(DAY FROM datum) AS day_of_month,
     EXTRACT(MONTH FROM datum) AS month,
     TO_CHAR(datum, 'Month') AS month_name,
-    EXTRACT(QUARTER FROM datum) AS quarter,
-    EXTRACT(YEAR FROM datum) AS year,
     CASE WHEN EXTRACT(ISODOW FROM datum) IN (6, 7) THEN TRUE ELSE FALSE END AS is_weekend
 FROM generate_series(
-    '2000-01-01'::timestamp,  -- Ngày bắt đầu cố định
-    '3000-01-01'::timestamp,  -- Ngày kết thúc là 1000 năm nữa (tự động cập nhật khi chạy lệnh)
-    '1 day'::interval         -- Bước nhảy là 1 ngày
+    '2000-01-01'::timestamp, 
+    '3000-01-01'::timestamp, 
+    '1 day'::interval
 ) AS datum
 ORDER BY 1;
+
+-- Create index on full_date for optimized joins on fact tables
+CREATE INDEX idx_dim_date_full_date ON dwh.dim_date(full_date);
+
 
 CREATE TABLE dwh.dim_exchange (
     exchange_key SERIAL PRIMARY KEY,  -- Khóa tự tăng (Surrogate Key)
@@ -129,14 +171,15 @@ CREATE TABLE dwh.fact_daily_price (
     PRIMARY KEY (date_key, company_key)
 );
 
--- Nạp dữ liệu từ bảng daily_price, thực hiện JOIN để lấy company_key
+-- Nạp dữ liệu từ bảng daily_price, thực hiện JOIN để lấy company_key và date_key
 INSERT INTO dwh.fact_daily_price (date_key, company_key, open_price, high_price, low_price, close_price, volume)
 SELECT
-    TO_CHAR(p.date, 'yyyymmdd')::INT AS date_key,
+    d.date_key,
     c.company_key,
     p.open, p.high, p.low, p.close, p.volume
 FROM public.daily_price p
 JOIN dwh.dim_company c ON p.ticker = c.ticker
+JOIN dwh.dim_date d ON d.full_date = p.date
 ON CONFLICT (date_key, company_key) DO UPDATE SET
     open_price = EXCLUDED.open_price,
     high_price = EXCLUDED.high_price,
@@ -160,15 +203,22 @@ CREATE TABLE dwh.fact_balance_sheet (
     PRIMARY KEY (date_key, company_key, is_annual)
 );
 
--- Nạp dữ liệu từ bảng balance_sheet, thực hiện JOIN để lấy company_key
+-- Nạp dữ liệu từ bảng balance_sheet, thực hiện JOIN để lấy company_key và date_key từ dim_date
 INSERT INTO dwh.fact_balance_sheet (date_key, company_key, is_annual, cash, fixed_asset, asset, debt, equity, capital, central_bank_deposit, other_bank_deposit, other_bank_loan, stock_invest, customer_loan, bad_loan, provision, net_customer_loan, other_asset, other_bank_credit, owe_other_bank, owe_central_bank, valuable_paper, payable_interest, receivable_interest, deposit, other_debt, fund, un_distributed_income, minor_share_holder_profit, payable)
 SELECT
-    (year || CASE WHEN quarter = 1 THEN '0331' WHEN quarter = 2 THEN '0630' WHEN quarter = 3 THEN '0930' WHEN quarter IN (4,5) THEN '1231' END)::INT AS date_key,
+    d.date_key,
     c.company_key,
     (CASE WHEN b.quarter = 5 THEN TRUE ELSE FALSE END) AS is_annual,
     b.cash, b.fixed_asset, b.asset, b.debt, b.equity, b.capital, b.central_bank_deposit, b.other_bank_deposit, b.other_bank_loan, b.stock_invest, b.customer_loan, b.bad_loan, b.provision, b.net_customer_loan, b.other_asset, b.other_bank_credit, b.owe_other_bank, b.owe_central_bank, b.valuable_paper, b.payable_interest, b.receivable_interest, b.deposit, b.other_debt, b.fund, b.un_distributed_income, b.minor_share_holder_profit, b.payable
 FROM public.balance_sheet b
 JOIN dwh.dim_company c ON b.ticker = c.ticker
+JOIN dwh.dim_date d ON d.full_date = (
+    CASE WHEN b.quarter = 1 THEN make_date(b.year, 3, 31)
+         WHEN b.quarter = 2 THEN make_date(b.year, 6, 30)
+         WHEN b.quarter = 3 THEN make_date(b.year, 9, 30)
+         WHEN b.quarter IN (4, 5) THEN make_date(b.year, 12, 31)
+    END
+)
 WHERE b.quarter IN (1, 2, 3, 4, 5)
 ON CONFLICT (date_key, company_key, is_annual) DO UPDATE SET
     cash = EXCLUDED.cash,
@@ -209,15 +259,22 @@ CREATE TABLE dwh.fact_cash_flow (
     PRIMARY KEY (date_key, company_key, is_annual)
 );
 
--- Nạp dữ liệu từ bảng cash_flow, thực hiện JOIN để lấy company_key
+-- Nạp dữ liệu từ bảng cash_flow, thực hiện JOIN để lấy company_key và date_key từ dim_date
 INSERT INTO dwh.fact_cash_flow (date_key, company_key, is_annual, invest_cost, from_invest, from_financial, from_sale, free_cash_flow)
 SELECT
-    (year || CASE WHEN quarter = 1 THEN '0331' WHEN quarter = 2 THEN '0630' WHEN quarter = 3 THEN '0930' WHEN quarter IN (4,5) THEN '1231' END)::INT AS date_key,
+    d.date_key,
     c.company_key,
     (CASE WHEN cf.quarter = 5 THEN TRUE ELSE FALSE END) AS is_annual,
     cf.invest_cost, cf.from_invest, cf.from_financial, cf.from_sale, cf.free_cash_flow
 FROM public.cash_flow cf
 JOIN dwh.dim_company c ON cf.ticker = c.ticker
+JOIN dwh.dim_date d ON d.full_date = (
+    CASE WHEN cf.quarter = 1 THEN make_date(cf.year, 3, 31)
+         WHEN cf.quarter = 2 THEN make_date(cf.year, 6, 30)
+         WHEN cf.quarter = 3 THEN make_date(cf.year, 9, 30)
+         WHEN cf.quarter IN (4, 5) THEN make_date(cf.year, 12, 31)
+    END
+)
 WHERE cf.quarter IN (1, 2, 3, 4, 5)
 ON CONFLICT (date_key, company_key, is_annual) DO UPDATE SET
     invest_cost = EXCLUDED.invest_cost,
@@ -240,15 +297,22 @@ CREATE TABLE dwh.fact_income_statement (
     PRIMARY KEY (date_key, company_key, is_annual)
 );
 
--- Nạp dữ liệu từ bảng income_statement, thực hiện JOIN để lấy company_key
+-- Nạp dữ liệu từ bảng income_statement, thực hiện JOIN để lấy company_key và date_key từ dim_date
 INSERT INTO dwh.fact_income_statement (date_key, company_key, is_annual, revenue, year_revenue_growth, operation_expense, operation_profit, year_operation_profit_growth, pre_tax_profit, post_tax_profit, share_holder_income, year_share_holder_income_growth, invest_profit, service_profit, other_profit, provision_expense, operation_income, quarter_revenue_growth, quarter_operation_profit_growth, quarter_share_holder_income_growth)
 SELECT
-    (year || CASE WHEN quarter = 1 THEN '0331' WHEN quarter = 2 THEN '0630' WHEN quarter = 3 THEN '0930' WHEN quarter IN (4,5) THEN '1231' END)::INT AS date_key,
+    d.date_key,
     c.company_key,
     (CASE WHEN i.quarter = 5 THEN TRUE ELSE FALSE END) AS is_annual,
     i.revenue, i.year_revenue_growth, i.operation_expense, i.operation_profit, i.year_operation_profit_growth, i.pre_tax_profit, i.post_tax_profit, i.share_holder_income, i.year_share_holder_income_growth, i.invest_profit, i.service_profit, i.other_profit, i.provision_expense, i.operation_income, i.quarter_revenue_growth, i.quarter_operation_profit_growth, i.quarter_share_holder_income_growth
 FROM public.income_statement i
 JOIN dwh.dim_company c ON i.ticker = c.ticker
+JOIN dwh.dim_date d ON d.full_date = (
+    CASE WHEN i.quarter = 1 THEN make_date(i.year, 3, 31)
+         WHEN i.quarter = 2 THEN make_date(i.year, 6, 30)
+         WHEN i.quarter = 3 THEN make_date(i.year, 9, 30)
+         WHEN i.quarter IN (4, 5) THEN make_date(i.year, 12, 31)
+    END
+)
 WHERE i.quarter IN (1, 2, 3, 4, 5)
 ON CONFLICT (date_key, company_key, is_annual) DO UPDATE SET
     revenue = EXCLUDED.revenue,
@@ -287,15 +351,22 @@ CREATE TABLE dwh.fact_ratio (
     PRIMARY KEY (date_key, company_key, is_annual)
 );
 
--- Nạp dữ liệu từ bảng ratio, thực hiện JOIN để lấy company_key
+-- Nạp dữ liệu từ bảng ratio, thực hiện JOIN để lấy company_key và date_key từ dim_date
 INSERT INTO dwh.fact_ratio (date_key, company_key, is_annual, price_to_earning, price_to_book, dividend, roe, roa, earning_per_share, book_value_per_share, interest_margin, non_interest_on_toi, bad_debt_percentage, provision_on_bad_debt, cost_of_financing, equity_on_total_asset, equity_on_loan, cost_to_income, equity_on_liability, eps_change, asset_on_equity, pre_provision_on_toi, post_tax_on_toi, loan_on_earn_asset, loan_on_asset, loan_on_deposit, deposit_on_earn_asset, bad_debt_on_asset, liquidity_on_liability, payable_on_equity, cancel_debt, book_value_per_share_change, credit_growth)
 SELECT
-    (year || CASE WHEN quarter = 1 THEN '0331' WHEN quarter = 2 THEN '0630' WHEN quarter = 3 THEN '0930' WHEN quarter IN (4,5) THEN '1231' END)::INT AS date_key,
+    d.date_key,
     c.company_key,
     (CASE WHEN r.quarter = 5 THEN TRUE ELSE FALSE END) AS is_annual,
     r.price_to_earning, r.price_to_book, r.dividend, r.roe, r.roa, r.earning_per_share, r.book_value_per_share, r.interest_margin, r.non_interest_on_toi, r.bad_debt_percentage, r.provision_on_bad_debt, r.cost_of_financing, r.equity_on_total_asset, r.equity_on_loan, r.cost_to_income, r.equity_on_liability, r.eps_change, r.asset_on_equity, r.pre_provision_on_toi, r.post_tax_on_toi, r.loan_on_earn_asset, r.loan_on_asset, r.loan_on_deposit, r.deposit_on_earn_asset, r.bad_debt_on_asset, r.liquidity_on_liability, r.payable_on_equity, r.cancel_debt, r.book_value_per_share_change, r.credit_growth
 FROM public.ratio r
 JOIN dwh.dim_company c ON r.ticker = c.ticker
+JOIN dwh.dim_date d ON d.full_date = (
+    CASE WHEN r.quarter = 1 THEN make_date(r.year, 3, 31)
+         WHEN r.quarter = 2 THEN make_date(r.year, 6, 30)
+         WHEN r.quarter = 3 THEN make_date(r.year, 9, 30)
+         WHEN r.quarter IN (4, 5) THEN make_date(r.year, 12, 31)
+    END
+)
 WHERE r.quarter IN (1, 2, 3, 4, 5)
 ON CONFLICT (date_key, company_key, is_annual) DO UPDATE SET
     price_to_earning = EXCLUDED.price_to_earning,
