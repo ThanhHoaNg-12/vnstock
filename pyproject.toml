@@ -44,9 +44,9 @@ dependencies = [
     "typing-inspection==0.4.1",
     "tzdata==2025.2",
     "urllib3==2.5.0",
-    "vnai==2.1.9",
-    "vnstock==3.2.6",
-    "vnstock-ezchart==0.0.2",
+    "vnai==2.2.3",
+    "vnstock==3.3.0",
+    "vnstock-ezchart==0.0.3",
     "wordcloud==1.9.4",
     "zipp==3.23.0",
 ]

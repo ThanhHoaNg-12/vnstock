@@ -44,7 +44,7 @@ def call_api(api_client: FinanceAPI, stock: str, start_date: str, end_date: str)
 class DataOrchestrator:
     # Khởi tạo đối tượng DataOrchestrator
     def __init__(self, listing_df: pd.DataFrame, data_path: Path, db_url: str, db_schema_file: Path,
-                 load_from_file: bool = False):
+                 load_from_file: bool = False, today: datetime | None = None):
         """
         Initialize a DataOrchestrator instance.
 
@@ -58,7 +58,7 @@ class DataOrchestrator:
         # Lưu trữ đường dẫn hiện tại để lưu dữ liệu
         self._cur_path = data_path
         # Lưu trữ ngày hiện tại
-        self._today = datetime.now()
+        self._today = today or datetime.now()
         # Khởi tạo giao diện cơ sở dữ liệu
         self._db_interface = DBInterface(db_url, db_schema_file)
         self._db_schema = get_table_schemas_from_sql(str(db_schema_file))
