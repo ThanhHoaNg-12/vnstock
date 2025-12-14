@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel("INFO")
 
 # Định nghĩa lớp FinanceAPI
-for cls, methods in [(vnstock.Company, COMPANY_METHODS), (vnstock.Finance, FINANCE_METHODS)]:
+for cls, methods in [(tcbs_company.Company, COMPANY_METHODS), (tcbs_financial.Finance, FINANCE_METHODS)]:
     remove_optimize_execution_decorator(cls, methods)
 
 
