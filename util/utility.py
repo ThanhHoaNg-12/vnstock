@@ -10,6 +10,7 @@ import requests
 # Nhập thư viện Regular Expression (biểu thức chính quy) để xử lý văn bản mạnh mẽ
 import re
 import logging
+from typing import Any, Type
 
 # Cấu hình logging cơ bản cho các tiện ích này
 logging.basicConfig(
@@ -279,7 +280,7 @@ def fixed_delay_api_call(function, **kwargs) -> pd.DataFrame:
     return value
 
 
-def login(username: str, password: str):
+def login(username: str, password: str, device_info: str) -> dict[str, Any]:
     """
     Logs in to the TCBS API using the provided username and password.
 
@@ -298,7 +299,7 @@ def login(username: str, password: str):
     payload = {
         "username": username,
         "password": password,
-        "device_info": "{\"os.name\":\"Windows\",\"os.version\":10,\"browser.name\":\"Edge\",\"browser.version\":136,\"device.platform\":\"web\",\"device.name\":\"Edge Windows 10\",\"device.physicalID\":\"b63be451-ed00-45cc-a4cd-8f654635f749\",\"navigator.userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0\",\"navigator.appVersion\":\"5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0\",\"navigator.platform\":\"Win32\",\"navigator.vendor\":\"Google Inc.\",\"webVersion\":\"25.5.2\"}"
+        "device_info": device_info
     }
     headers = {"Content-Type": "application/json",
                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
@@ -312,7 +313,7 @@ def login(username: str, password: str):
         return {}
 
 
-def get_auth_info(bearer_keys: list[str], usernames: list[str], passwords: list[str]) -> tuple[list[str], list[str]]:
+def get_auth_info(bearer_keys: list[str], usernames: list[str], passwords: list[str], device_info: str) -> tuple[list[str], list[str]]:
     """
     Get the bearer keys from environment variables or scrape it from TCBS' website
 
@@ -323,6 +324,7 @@ def get_auth_info(bearer_keys: list[str], usernames: list[str], passwords: list[
     :param bearer_keys: list[str], list of bearer keys from environment variable
     :param usernames: list[str], list of usernames from environment variable
     :param passwords: list[str], list of passwords from environment variable
+    :param device_info: str, device information in JSON format
 
     Returns:
         tuple[list[str], str]: A tuple of bearer keys and tcbs_id
@@ -332,39 +334,32 @@ def get_auth_info(bearer_keys: list[str], usernames: list[str], passwords: list[
     tokens = []
     tcbs_id = []
     for username, password in zip(usernames, passwords):
-        auth_info = login(username, password)
+        auth_info = login(username, password, device_info)
         logger.info(auth_info)
         tokens.append(auth_info['token'])
         tcbs_id.append(auth_info['tcbsid'])
     return tokens, tcbs_id
 
-def remove_optimize_execution_decorator():
+def remove_optimize_execution_decorator(cls: Type[Any], method_names: list[str]) -> None:
     """
-    Dynamically remove the @optimize_execution decorator from methods in the Company and Finance classes.
+    Dynamically remove the decorator from methods in the cls class.
     """
     # List of methods to remove the decorator from in the Company class
-    company_methods = [
-        "overview", "profile", "shareholders", "insider_deals",
-        "subsidiaries", "officers", "events", "news", "dividends"
-    ]
 
-    # List of methods to remove the decorator from in the Finance class
-    finance_methods = [
-        "balance_sheet", "income_statement", "cash_flow", "ratio"
-    ]
-
-    # Remove the decorator from Company methods
-    for method_name in company_methods:
-        if hasattr(Company, method_name):
+    # Remove the decorator from cls methods
+    for method_name in method_names:
+        if hasattr(cls, method_name):
             # Get the original undecorated method
-            original_method = getattr(Company, method_name)
+            original_method = getattr(cls, method_name)
             if hasattr(original_method, "__wrapped__"):  # Check if it's decorated
-                setattr(Company, method_name, original_method.__wrapped__)  # Replace with undecorated version
+                setattr(cls, method_name, original_method.__wrapped__)  # Replace with undecorated version
 
-    # Remove the decorator from Finance methods
-    for method_name in finance_methods:
-        if hasattr(Finance, method_name):
-            # Get the original undecorated method
-            original_method = getattr(Finance, method_name)
-            if hasattr(original_method, "__wrapped__"):  # Check if it's decorated
-                setattr(Finance, method_name, original_method.__wrapped__)  # Replace with undecorated version
+
+COMPANY_METHODS = [
+    "overview", "profile", "shareholders", "insider_deals",
+    "subsidiaries", "officers", "events", "news", "dividends"
+]
+# List of methods to remove the decorator from in the Finance class
+FINANCE_METHODS = [
+    "balance_sheet", "income_statement", "cash_flow", "ratio"
+]

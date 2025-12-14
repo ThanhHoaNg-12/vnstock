@@ -1,7 +1,7 @@
 import vnstock
 import vnstock.explorer.tcbs.company as tcbs_company
 import vnstock.explorer.tcbs.financial as tcbs_financial
-from util.utility import fixed_delay_api_call, remove_optimize_execution_decorator, transform_df, clean_dataframe
+from util.utility import fixed_delay_api_call, remove_optimize_execution_decorator, transform_df, clean_dataframe, COMPANY_METHODS, FINANCE_METHODS
 import logging
 import pandas as pd
 from typing import Any
@@ -15,24 +15,30 @@ logging.basicConfig(
     style="{",
     datefmt="%Y-%m-%d %H:%M",
 )
-# Tạo logger cho module FinanceApi 
+# Tạo logger cho module FinanceApi
 logger = logging.getLogger(__name__)
 # Chỉ cho phép ghi log ở mức INFO trở lên hoặc lỗi
 logger.setLevel("INFO")
 
 # Định nghĩa lớp FinanceAPI
+for cls, methods in [(vnstock.Company, COMPANY_METHODS), (vnstock.Finance, FINANCE_METHODS)]:
+    remove_optimize_execution_decorator(cls, methods)
+
+
+
 class FinanceAPI:
     # Khởi tạo lớp với schema_dict (cấu trúc 6 bảng dữ liệu)
     def __init__(self, schema_dict: dict[str, Any], bearer_key: str):
         # Thiết lập ngôn ngữ và nguồn dữ liệu
-        remove_optimize_execution_decorator()
+
+        # Remove the decorator from Company methods
         self._finance = None
         self._company = None
         self._language = 'en'
         self._source = 'TCBS'
         # Lưu trữ schema_dict
         self._schema_dict = schema_dict
-        self._bearer_key  = bearer_key
+        self._bearer_key = bearer_key
 
 # Định nghĩa phương thức để lấy thông tin hồ sơ công ty
     def _get_company_profile(self, symbol: str, table_name: str) -> pd.DataFrame:
@@ -46,9 +52,9 @@ class FinanceAPI:
         company_df = self._company.overview()
         # Đổi tên cột 'symbol' thành 'ticker'
         company_df = company_df.rename(columns={'symbol': 'ticker'})
-        # Hàm clean_dataframe để kiểm tra cột và xóa hàng trùng lặp theo khóa chính 
+        # Hàm clean_dataframe để kiểm tra cột và xóa hàng trùng lặp theo khóa chính
         final_df = clean_dataframe(company_df, self._schema_dict[table_name]['columns'],
-                                     self._schema_dict[table_name]['primary_keys'])
+                                   self._schema_dict[table_name]['primary_keys'])
         return final_df
 
     def _get_company_cash_flow(self, symbol: str, table_name: str) -> pd.DataFrame:
@@ -62,7 +68,7 @@ class FinanceAPI:
         # Tạo đối tượng Finance với symbol: mã cổ phiếu và source : nguồn dữ liệu
         annual_data = self._finance.cash_flow(period="year")
         quarterly_data = self._finance.cash_flow(period="quarter")
-        # Thêm cột ticker vào dữ liệu 
+        # Thêm cột ticker vào dữ liệu
         annual_data['ticker'] = symbol
         quarterly_data['ticker'] = symbol
         # hàm transform xử lý cột thời gian : Với báo cáo quý (ví dụ "Q1-2024"): Nó tách thành cột quarter = 1 và year = 2024.
@@ -74,6 +80,7 @@ class FinanceAPI:
                                    self._schema_dict[table_name]['primary_keys'])
         return final_df
 # Bảng cân đối kế toán
+
     def _get_company_balance_sheet(self, symbol: str, table_name: str) -> pd.DataFrame:
         """
         Retrieve and merge the quarterly and annual balance sheet data for a given company symbol.
@@ -92,6 +99,7 @@ class FinanceAPI:
                                    self._schema_dict[table_name]['primary_keys'])
         return final_df
 # Báo cáo kết quả hoạt động kinh doanh
+
     def _get_company_income_statement(self, symbol: str, table_name: str) -> pd.DataFrame:
         """
         Retrieve and merge the quarterly and annual income statement data for a given company symbol.
@@ -110,6 +118,7 @@ class FinanceAPI:
                                    self._schema_dict[table_name]['primary_keys'])
         return final_df
 # Chỉ số tài chính
+
     def _get_company_ratio(self, symbol: str, table_name: str) -> pd.DataFrame:
         """
         Retrieve and merge the quarterly and annual ratio data for a given company symbol.
@@ -127,7 +136,7 @@ class FinanceAPI:
                                    self._schema_dict[table_name]['primary_keys'])
         return final_df
 
-    #staticmethod là phương thức tĩnh không phụ thuộc vào trạng thái của đối tượng lớp
+    # staticmethod là phương thức tĩnh không phụ thuộc vào trạng thái của đối tượng lớp
     @staticmethod
     def _get_company_price_history_data(symbol: str, start_date: str, end_date: str) -> pd.DataFrame:
         """
@@ -137,16 +146,16 @@ class FinanceAPI:
         :param end_date: End date
         :return: Price history data as a DataFrame
         """
-        #quote dùng vnstock.Quote để lấy lịch sử giá cổ phiếu
+        # quote dùng vnstock.Quote để lấy lịch sử giá cổ phiếu
         quote = vnstock.Quote(symbol=symbol)
         # Lấy lịch sử giá cổ phiếu từ start_date đến end_date
         price_history = quote.history(start=start_date, end=end_date)
         price_history['ticker'] = symbol
         # Rename time column to date
-        #đổi tên cột 'time' thành 'date'
+        # đổi tên cột 'time' thành 'date'
         price_history = price_history.rename(columns={'time': 'date'})
         return price_history
-    
+
     def build_dict(self, ticker: str, start_date: str, end_date: str) -> dict[str, Any]:
         """
         Build a dictionary of dataframes by calling the API from vnstock
@@ -176,4 +185,3 @@ class FinanceAPI:
         for key, (func, kwargs) in functions_to_call.items():
             response[key] = fixed_delay_api_call(func, **kwargs)
         return response
-

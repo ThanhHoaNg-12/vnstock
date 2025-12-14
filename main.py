@@ -30,7 +30,8 @@ def main():
     bearer_keys = os.getenv("BEARER_KEYS", "").split(";")
     usernames = os.getenv("BTN_USERNAME", "").split(";")
     passwords = os.getenv("BTN_PASSWORD", "").split(";")
-    bearer_keys, tcbs_ids = get_auth_info(bearer_keys, usernames, passwords)
+    device_info = os.getenv("DEVICE_INFO", "")
+    bearer_keys, _ = get_auth_info(bearer_keys, usernames, passwords, device_info)
     stock_data_folder = Path.cwd() / "StockData"
     logger.info(f"Creating folders {stock_data_folder=}")
     today = os.getenv("DATE")
