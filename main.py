@@ -2,9 +2,11 @@ from pathlib import Path
 import logging
 from dotenv import load_dotenv, find_dotenv
 from DataOrchestrator.DataOrchestrator import DataOrchestrator
-from util.utility import get_banks_listings, parse_boolean
+from util.utility import get_auth_info, get_banks_listings, parse_boolean
 import os
 from datetime import datetime
+
+
 
 # Cấu hình hệ thống ghi nhật ký (logging) và nạp biến môi trường
 logging.basicConfig(
@@ -25,6 +27,10 @@ def main():
     listings_df = get_banks_listings(parse_boolean(os.getenv("TESTING")))
     logger.info(f"Found {len(listings_df)} banks")
     # Tạo thư mục lưu trữ dữ liệu nếu chưa tồn tại
+    bearer_keys = os.getenv("BEARER_KEYS", "").split(";")
+    usernames = os.getenv("BTN_USERNAME", "").split(";")
+    passwords = os.getenv("BTN_PASSWORD", "").split(";")
+    bearer_keys, tcbs_ids = get_auth_info(bearer_keys, usernames, passwords)
     stock_data_folder = Path.cwd() / "StockData"
     logger.info(f"Creating folders {stock_data_folder=}")
     today = os.getenv("DATE")
@@ -38,7 +44,7 @@ def main():
     logger.info("Downloading data...")
     data_orchestrator = DataOrchestrator(listing_df=listings_df, data_path=stock_data_folder,
                                          db_url=os.getenv("DATABASE_URL"), db_schema_file=Path.cwd() / "schema.sql",
-                                         load_from_file=parse_boolean(os.getenv("LOAD_FROM_FILE")), today=today)
+                                         load_from_file=parse_boolean(os.getenv("LOAD_FROM_FILE")), today=today, bearer_keys=bearer_keys)
     data_orchestrator.run()
     # Hoàn tất
     logger.info("Done")
