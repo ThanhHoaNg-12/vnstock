@@ -44,7 +44,7 @@ def call_api(api_client: FinanceAPI, stock: str, start_date: str, end_date: str)
 class DataOrchestrator:
     # Khởi tạo đối tượng DataOrchestrator
     def __init__(self, listing_df: pd.DataFrame, data_path: Path, db_url: str, db_schema_file: Path,
-                 load_from_file: bool = False, today: datetime | None = None):
+                 load_from_file: bool = False, today: datetime | None = None, bearer_keys: list[str] | None = None):
         """
         Initialize a DataOrchestrator instance.
 
@@ -63,6 +63,7 @@ class DataOrchestrator:
         self._db_interface = DBInterface(db_url, db_schema_file)
         self._db_schema = get_table_schemas_from_sql(str(db_schema_file))
         self._load_from_file = load_from_file
+        self._bearer_keys = bearer_keys or []
 
     # Làm việc với từng cổ phiếu để lấy dữ liệu
     def _fetch_data_worker(self, start_date: str, end_date: str, finance_api: FinanceAPI, ticker: str) -> dict[
@@ -157,7 +158,7 @@ class DataOrchestrator:
         The method logs the progress and completion of data fetching and writing operations.
         """
         # Khởi tạo FinanceAPI để gọi API lấy dữ liệu
-        finance_api = FinanceAPI(schema_dict=(self._db_schema or {}))
+        finance_api = FinanceAPI(schema_dict=(self._db_schema or {}), bearer_key=self._bearer_keys[0])
         # Tính toán khoảng thời gian từ 11 năm trước đến ngày hiện tại
         eleven_years_ago = self._today - timedelta(days=365 * 11)
         start_date = eleven_years_ago.strftime('%Y-%m-%d')

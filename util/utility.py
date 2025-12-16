@@ -1,10 +1,16 @@
 # Nhập thư viện vnstock để lấy danh sách mã chứng khoán
 from vnstock import Listing
+from vnstock.explorer.tcbs.company import Company
+from vnstock.explorer.tcbs.financial import Finance
 from pathlib import Path
 import pandas as pd
+import time
+import random
+import requests
 # Nhập thư viện Regular Expression (biểu thức chính quy) để xử lý văn bản mạnh mẽ
 import re
 import logging
+from typing import Any, Type
 
 # Cấu hình logging cơ bản cho các tiện ích này
 logging.basicConfig(
@@ -242,3 +248,118 @@ def get_table_schemas_from_sql(filepath):
         return None
 
     return table_schemas
+
+# Hàm để gọi API với độ trễ cố định nhằm tránh vượt quá giới hạn API
+def fixed_delay_api_call(function, **kwargs) -> pd.DataFrame:
+    """Make API calls and pause the program
+    when API limits has been reached.
+    :param function: The function to call
+    :param kwargs: Keyword arguments for the function
+    :returns: A pandas DataFrame or None if an error occurs
+    """
+    # Ghi lại thời gian bắt đầu
+    # Gọi hàm với tham số đã cho và xử lý lỗi nếu có
+    value = None
+    # Try 3 times. If all fails, return None. If one succeeds, break the loop
+    for i in range(3):
+        start = time.perf_counter() + 1
+        try:
+            value = function(**kwargs)
+        except Exception as e:
+            logger.error(f"Error calling API with {function=}, {kwargs=}: {e}")
+            if i < 2:
+                time.sleep(60 + random.uniform(0, 5))
+        else:
+            diff = time.perf_counter() - start
+            if diff > 0:
+                time.sleep(diff + 1)
+            else:
+                time.sleep(1)
+            break
+
+    return value
+
+
+def login(username: str, password: str, device_info: str) -> dict[str, Any]:
+    """
+    Logs in to the TCBS API using the provided username and password.
+
+    Parameters:
+    username (str): The username to use for login
+    password (str): The password to use for login
+
+    Returns:
+    dict: A dictionary containing the bearer key and refresh token if the login is successful, otherwise an empty dictionary
+
+    Logs:
+        Info: If the login is successful
+        Error: If the login fails, including the status code and message
+    """
+    url_login = "https://apipub.tcbs.com.vn/authen/v1/login"
+    payload = {
+        "username": username,
+        "password": password,
+        "device_info": device_info
+    }
+    headers = {"Content-Type": "application/json",
+               "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
+               "Accept-Language": "en"}
+    response = requests.post(url=url_login, json=payload, headers=headers, verify=False)
+    if response.status_code == 200:
+        auth_info = response.json()
+        return auth_info
+    else:
+        logger.error(f"Login failed with status code {response.status_code}. Message {response.text}")
+        return {}
+
+
+def get_auth_info(bearer_keys: list[str], usernames: list[str], passwords: list[str], device_info: str) -> tuple[list[str], list[str]]:
+    """
+    Get the bearer keys from environment variables or scrape it from TCBS' website
+
+    The function first checks if the Bearer keys are available in the environment variables.
+    If they are, it splits the string into a list and returns it.
+    If the Bearer keys are not available, it uses the provided usernames and passwords to log in to the TCBS API
+
+    :param bearer_keys: list[str], list of bearer keys from environment variable
+    :param usernames: list[str], list of usernames from environment variable
+    :param passwords: list[str], list of passwords from environment variable
+    :param device_info: str, device information in JSON format
+
+    Returns:
+        tuple[list[str], str]: A tuple of bearer keys and tcbs_id
+    """
+    if len(bearer_keys) > 0 and bearer_keys[0] != "":
+        return bearer_keys, [""]
+    tokens = []
+    tcbs_id = []
+    for username, password in zip(usernames, passwords):
+        auth_info = login(username, password, device_info)
+        logger.info(auth_info)
+        tokens.append(auth_info['token'])
+        tcbs_id.append(auth_info['tcbsid'])
+    return tokens, tcbs_id
+
+def remove_optimize_execution_decorator(cls: Type[Any], method_names: list[str]) -> None:
+    """
+    Dynamically remove the decorator from methods in the cls class.
+    """
+    # List of methods to remove the decorator from in the Company class
+
+    # Remove the decorator from cls methods
+    for method_name in method_names:
+        if hasattr(cls, method_name):
+            # Get the original undecorated method
+            original_method = getattr(cls, method_name)
+            if hasattr(original_method, "__wrapped__"):  # Check if it's decorated
+                setattr(cls, method_name, original_method.__wrapped__)  # Replace with undecorated version
+
+
+COMPANY_METHODS = [
+    "overview", "profile", "shareholders", "insider_deals",
+    "subsidiaries", "officers", "events", "news", "dividends"
+]
+# List of methods to remove the decorator from in the Finance class
+FINANCE_METHODS = [
+    "balance_sheet", "income_statement", "cash_flow", "ratio"
+]
