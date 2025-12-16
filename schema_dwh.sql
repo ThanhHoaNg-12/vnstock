@@ -1,34 +1,33 @@
 -- Tạo schema cho Data Warehouse
 CREATE SCHEMA IF NOT EXISTS dwh;
 
--- Xóa sạch các bảng cũ trong schema dwh để làm lại từ đầu (nếu cần)
+-- ==================================================================
+-- BƯỚC 1: XÓA SẠCH CÁC BẢNG CŨ ĐỂ LÀM LẠI
+-- ==================================================================
 DROP TABLE IF EXISTS dwh.fact_daily_price CASCADE;
 DROP TABLE IF EXISTS dwh.fact_balance_sheet CASCADE;
 DROP TABLE IF EXISTS dwh.fact_income_statement CASCADE;
 DROP TABLE IF EXISTS dwh.fact_cash_flow CASCADE;
 DROP TABLE IF EXISTS dwh.fact_ratio CASCADE;
-DROP TABLE IF EXISTS dwh.dim_company CASCADE;
+DROP TABLE IF EXISTS dwh.dim_company CASCADE; -- Xóa bảng company cũ
 DROP TABLE IF EXISTS dwh.dim_date CASCADE;
-DROP TABLE IF EXISTS dwh.dim_industry CASCADE;
-DROP TABLE IF EXISTS dwh.dim_exchange CASCADE;
 DROP TABLE IF EXISTS dwh.dim_quarter CASCADE;
 DROP TABLE IF EXISTS dwh.dim_year CASCADE;
 DROP TABLE IF EXISTS dwh.etl_trigger_log CASCADE;
--- ==================================================================
--- BƯỚC 1: XÓA BẢNG LỊCH CŨ (VÀ CÁC BẢNG FACT LIÊN QUAN DO CASCADE)
--- ==================================================================
--- CẢNH BÁO: HÀNH ĐỘNG NÀY SẼ XÓA DỮ LIỆU CÁC BẢNG FACT ĐANG CÓ
+DROP TABLE IF EXISTS dwh.dim_exchange CASCADE;
+DROP TABLE IF EXISTS dwh.dim_industry CASCADE;
+
+-- Lưu ý: Đã xóa dim_exchange và dim_industry vì không dùng nữa
 
 -- ==================================================================
--- BƯỚC 2: TẠO LẠI CẤU TRÚC BẢNG
+-- BƯỚC 2: TẠO VÀ NẠP DIMENSION THỜI GIAN (YEAR, QUARTER, DATE)
 -- ==================================================================
 CREATE TABLE dwh.dim_year (
-    year_key INT PRIMARY KEY,   -- Ví dụ: 2023
-    year_number INT NOT NULL,   -- 2023
-    is_leap_year BOOLEAN NOT NULL -- Năm nhuận hay không
+    year_key INT PRIMARY KEY,
+    year_number INT NOT NULL,
+    is_leap_year BOOLEAN NOT NULL
 );
 
--- 2.2. Nạp dữ liệu tự động (Từ 2000 đến 2035)
 INSERT INTO dwh.dim_year (year_key, year_number, is_leap_year)
 SELECT 
     y AS year_key,
@@ -36,34 +35,26 @@ SELECT
     (y % 4 = 0 AND y % 100 <> 0) OR (y % 400 = 0) AS is_leap_year
 FROM generate_series(2000, 3000) AS y;
 
-
--- ==================================================
--- BƯỚC 3: TẠO VÀ NẠP DỮ LIỆU CHO DIM_QUARTER (ĐÃ SỬA LỖI)
--- ==================================================
--- 3.1. Tạo bảng
 CREATE TABLE dwh.dim_quarter (
-    quarter_key INT PRIMARY KEY,    -- Ví dụ: 20231, 20232
-    year_key INT NOT NULL REFERENCES dwh.dim_year(year_key), -- Khóa ngoại
-    quarter_number INT NOT NULL,    -- 1, 2, 3, 4
-    quarter_name VARCHAR(20) NOT NULL -- 'Quý 1 2023', ...
+    quarter_key INT PRIMARY KEY,
+    year_key INT NOT NULL REFERENCES dwh.dim_year(year_key),
+    quarter_number INT NOT NULL,
+    quarter_name VARCHAR(20) NOT NULL
 );
 
--- 3.2. Nạp dữ liệu tự động (SỬA LỖI Ở ĐÂY)
 INSERT INTO dwh.dim_quarter (quarter_key, year_key, quarter_number, quarter_name)
 SELECT 
-    -- Ép kiểu sang TEXT trước khi nối, sau đó ép ngược lại về INT
     (y.year_number::TEXT || q::TEXT)::INT AS quarter_key, 
     y.year_key,
     q AS quarter_number,
     'Quý ' || q || ' ' || y.year_number AS quarter_name
 FROM dwh.dim_year y
-CROSS JOIN generate_series(1, 4) AS q -- Tạo tổ hợp mỗi năm có 4 quý
+CROSS JOIN generate_series(1, 4) AS q
 ORDER BY 1;
 
 CREATE TABLE dwh.dim_date (
-    date_key INT PRIMARY KEY,         -- YYYYMMDD
+    date_key INT PRIMARY KEY,
     full_date DATE NOT NULL UNIQUE,
-    -- Khóa ngoại trỏ lên bảng Quý
     quarter_key INT NOT NULL REFERENCES dwh.dim_quarter(quarter_key),
     day_of_week INT NOT NULL,
     day_name VARCHAR(20) NOT NULL,
@@ -74,92 +65,67 @@ CREATE TABLE dwh.dim_date (
     is_trading_day BOOLEAN NOT NULL DEFAULT TRUE
 );
 
--- 4.2. Nạp dữ liệu tự động (SỬA LỖI Ở ĐÂY)
 INSERT INTO dwh.dim_date
 SELECT
     TO_CHAR(datum, 'yyyymmdd')::INT AS date_key,
     datum::DATE AS full_date,
-    -- Tính toán khóa ngoại quarter_key (YYYYQ) - Cần ép kiểu TEXT
     (EXTRACT(YEAR FROM datum)::TEXT || EXTRACT(QUARTER FROM datum)::TEXT)::INT AS quarter_key,
-    
     EXTRACT(ISODOW FROM datum) AS day_of_week,
     TO_CHAR(datum, 'Day') AS day_name,
     EXTRACT(DAY FROM datum) AS day_of_month,
     EXTRACT(MONTH FROM datum) AS month,
     TO_CHAR(datum, 'Month') AS month_name,
     CASE WHEN EXTRACT(ISODOW FROM datum) IN (6, 7) THEN TRUE ELSE FALSE END AS is_weekend
-FROM generate_series(
-    '2000-01-01'::timestamp, 
-    '3000-01-01'::timestamp, 
-    '1 day'::interval
-) AS datum
+FROM generate_series('2000-01-01'::timestamp, '3000-01-01'::timestamp, '1 day'::interval) AS datum
 ORDER BY 1;
 
--- Create index on full_date for optimized joins on fact tables
 CREATE INDEX idx_dim_date_full_date ON dwh.dim_date(full_date);
 
-
-CREATE TABLE dwh.dim_exchange (
-    exchange_key SERIAL PRIMARY KEY,  -- Khóa tự tăng (Surrogate Key)
-    exchange_code VARCHAR(10) NOT NULL UNIQUE, -- Mã sàn (HOSE, HNX, UPCOM)
-    exchange_name VARCHAR(100)        -- Tên đầy đủ (có thể cập nhật sau)
-);
-
--- Nạp dữ liệu từ bảng gốc (Chỉ lấy các sàn duy nhất)
-INSERT INTO dwh.dim_exchange (exchange_code)
-SELECT DISTINCT exchange
-FROM public.company
-WHERE exchange IS NOT NULL
-ORDER BY exchange;
-
-CREATE TABLE dwh.dim_industry (
-    industry_key SERIAL PRIMARY KEY, -- Khóa tự tăng (Surrogate Key)
-    industry_name VARCHAR(50) NOT NULL UNIQUE, -- Tên ngành
-    industry_id INT,                 -- ID ngành từ hệ thống nguồn
-    industry_id_v2 INT               -- ID ngành phiên bản 2
-);
-
--- Nạp dữ liệu từ bảng gốc
-INSERT INTO dwh.dim_industry (industry_name, industry_id, industry_id_v2)
-SELECT DISTINCT industry, industry_id, industry_id_v2
-FROM public.company
-WHERE industry IS NOT NULL
-ORDER BY industry;
-
+-- ==================================================================
+-- BƯỚC 3: TẠO BẢNG DIM_COMPANY (ĐÃ GỘP SÀN VÀ NGÀNH)
+-- ==================================================================
 CREATE TABLE dwh.dim_company (
-    company_key SERIAL PRIMARY KEY,   -- Khóa tự tăng (Surrogate Key)
-    ticker VARCHAR(10) NOT NULL UNIQUE, -- Mã chứng khoán (Business Key)
-    short_name VARCHAR(500),          -- Tên ngắn gọn
-    company_type VARCHAR(30),         -- Loại hình công ty
-    established_year INT,             -- Năm thành lập
-    no_employees INT,                 -- Số lượng nhân viên
-    no_shareholders BIGINT,           -- Số lượng cổ đông
-    website VARCHAR(500),             -- Website
-    -- Các cột khóa ngoại trỏ tới bảng dimension khác
-    exchange_key INT REFERENCES dwh.dim_exchange(exchange_key),
-    industry_key INT REFERENCES dwh.dim_industry(industry_key)
+    company_key SERIAL PRIMARY KEY,     -- Khóa tự tăng
+    ticker VARCHAR(10) NOT NULL UNIQUE, -- Business Key
+    short_name VARCHAR(500),
+    company_type VARCHAR(30),
+    established_year INT,
+    no_employees INT,
+    no_shareholders BIGINT,
+    website VARCHAR(500),
+    
+    -- Các cột mới được gộp vào từ Exchange và Industry
+    exchange_code VARCHAR(10),  -- HOSE, HNX...
+    industry_name VARCHAR(100), -- Tên ngành
+    industry_id INT,
+    industry_id_v2 INT
 );
 
--- Nạp dữ liệu từ bảng gốc, thực hiện JOIN để lấy khóa ngoại của Exchange và Industry
-INSERT INTO dwh.dim_company (ticker, short_name, company_type, established_year, no_employees, no_shareholders, website, exchange_key, industry_key)
+-- Nạp dữ liệu ban đầu từ public.company
+INSERT INTO dwh.dim_company (
+    ticker, short_name, company_type, established_year, 
+    no_employees, no_shareholders, website, 
+    exchange_code, industry_name, industry_id, industry_id_v2
+)
 SELECT
-    c.ticker,
-    c.short_name,
-    c.company_type,
-    c.established_year,
-    c.no_employees,
-    c.no_shareholders,
-    c.website,
-    e.exchange_key,
-    i.industry_key
-FROM public.company c
-LEFT JOIN dwh.dim_exchange e ON c.exchange = e.exchange_code
-LEFT JOIN dwh.dim_industry i ON c.industry = i.industry_name;
-
+    ticker,
+    short_name,
+    company_type,
+    established_year,
+    no_employees,
+    no_shareholders,
+    website,
+    exchange,       -- Lấy thẳng từ bảng gốc
+    industry,       -- Lấy thẳng từ bảng gốc
+    industry_id,
+    industry_id_v2
+FROM public.company;
 
 -- ==================================================================
--- BƯỚC 4: TẠO CÁC BẢNG FACT VÀ NẠP DỮ LIỆU
+-- BƯỚC 4: TẠO CÁC BẢNG FACT (Tham chiếu tới dim_company mới)
 -- ==================================================================
+
+-- 4.1. Fact Daily Price
 CREATE TABLE dwh.fact_daily_price (
     date_key INT NOT NULL REFERENCES dwh.dim_date(date_key),
     company_key INT NOT NULL REFERENCES dwh.dim_company(company_key),
@@ -171,7 +137,6 @@ CREATE TABLE dwh.fact_daily_price (
     PRIMARY KEY (date_key, company_key)
 );
 
--- Nạp dữ liệu từ bảng daily_price, thực hiện JOIN để lấy company_key và date_key
 INSERT INTO dwh.fact_daily_price (date_key, company_key, open_price, high_price, low_price, close_price, volume)
 SELECT
     d.date_key,
@@ -187,8 +152,7 @@ ON CONFLICT (date_key, company_key) DO UPDATE SET
     close_price = EXCLUDED.close_price,
     volume = EXCLUDED.volume;
 
-
--- Balance sheet: Bảng balance_sheet bao gồm cả dữ liệu quý và cả năm. Dữ liệu cả năm được đánh dấu bằng  is_annual = TRUE
+-- 4.2. Fact Balance Sheet
 CREATE TABLE dwh.fact_balance_sheet (
     date_key INT NOT NULL REFERENCES dwh.dim_date(date_key),
     company_key INT NOT NULL REFERENCES dwh.dim_company(company_key),
@@ -203,12 +167,11 @@ CREATE TABLE dwh.fact_balance_sheet (
     PRIMARY KEY (date_key, company_key, is_annual)
 );
 
--- Nạp dữ liệu từ bảng balance_sheet, thực hiện JOIN để lấy company_key và date_key từ dim_date
 INSERT INTO dwh.fact_balance_sheet (date_key, company_key, is_annual, cash, fixed_asset, asset, debt, equity, capital, central_bank_deposit, other_bank_deposit, other_bank_loan, stock_invest, customer_loan, bad_loan, provision, net_customer_loan, other_asset, other_bank_credit, owe_other_bank, owe_central_bank, valuable_paper, payable_interest, receivable_interest, deposit, other_debt, fund, un_distributed_income, minor_share_holder_profit, payable)
 SELECT
     d.date_key,
     c.company_key,
-    (CASE WHEN b.quarter = 5 THEN TRUE ELSE FALSE END) AS is_annual,
+    (CASE WHEN b.quarter = 5 THEN TRUE ELSE FALSE END),
     b.cash, b.fixed_asset, b.asset, b.debt, b.equity, b.capital, b.central_bank_deposit, b.other_bank_deposit, b.other_bank_loan, b.stock_invest, b.customer_loan, b.bad_loan, b.provision, b.net_customer_loan, b.other_asset, b.other_bank_credit, b.owe_other_bank, b.owe_central_bank, b.valuable_paper, b.payable_interest, b.receivable_interest, b.deposit, b.other_debt, b.fund, b.un_distributed_income, b.minor_share_holder_profit, b.payable
 FROM public.balance_sheet b
 JOIN dwh.dim_company c ON b.ticker = c.ticker
@@ -221,35 +184,9 @@ JOIN dwh.dim_date d ON d.full_date = (
 )
 WHERE b.quarter IN (1, 2, 3, 4, 5)
 ON CONFLICT (date_key, company_key, is_annual) DO UPDATE SET
-    cash = EXCLUDED.cash,
-    fixed_asset = EXCLUDED.fixed_asset,
-    asset = EXCLUDED.asset,
-    debt = EXCLUDED.debt,
-    equity = EXCLUDED.equity,
-    capital = EXCLUDED.capital,
-    central_bank_deposit = EXCLUDED.central_bank_deposit,
-    other_bank_deposit = EXCLUDED.other_bank_deposit,
-    other_bank_loan = EXCLUDED.other_bank_loan,
-    stock_invest = EXCLUDED.stock_invest,
-    customer_loan = EXCLUDED.customer_loan,
-    bad_loan = EXCLUDED.bad_loan,
-    provision = EXCLUDED.provision,
-    net_customer_loan = EXCLUDED.net_customer_loan,
-    other_asset = EXCLUDED.other_asset,
-    other_bank_credit = EXCLUDED.other_bank_credit,
-    owe_other_bank = EXCLUDED.owe_other_bank,
-    owe_central_bank = EXCLUDED.owe_central_bank,
-    valuable_paper = EXCLUDED.valuable_paper,
-    payable_interest = EXCLUDED.payable_interest,
-    receivable_interest = EXCLUDED.receivable_interest,
-    deposit = EXCLUDED.deposit,
-    other_debt = EXCLUDED.other_debt,
-    fund = EXCLUDED.fund,
-    un_distributed_income = EXCLUDED.un_distributed_income,
-    minor_share_holder_profit = EXCLUDED.minor_share_holder_profit,
-    payable = EXCLUDED.payable;
+    cash = EXCLUDED.cash, fixed_asset = EXCLUDED.fixed_asset, asset = EXCLUDED.asset, debt = EXCLUDED.debt, equity = EXCLUDED.equity, capital = EXCLUDED.capital, central_bank_deposit = EXCLUDED.central_bank_deposit, other_bank_deposit = EXCLUDED.other_bank_deposit, other_bank_loan = EXCLUDED.other_bank_loan, stock_invest = EXCLUDED.stock_invest, customer_loan = EXCLUDED.customer_loan, bad_loan = EXCLUDED.bad_loan, provision = EXCLUDED.provision, net_customer_loan = EXCLUDED.net_customer_loan, other_asset = EXCLUDED.other_asset, other_bank_credit = EXCLUDED.other_bank_credit, owe_other_bank = EXCLUDED.owe_other_bank, owe_central_bank = EXCLUDED.owe_central_bank, valuable_paper = EXCLUDED.valuable_paper, payable_interest = EXCLUDED.payable_interest, receivable_interest = EXCLUDED.receivable_interest, deposit = EXCLUDED.deposit, other_debt = EXCLUDED.other_debt, fund = EXCLUDED.fund, un_distributed_income = EXCLUDED.un_distributed_income, minor_share_holder_profit = EXCLUDED.minor_share_holder_profit, payable = EXCLUDED.payable;
 
--- Cash flow: Bảng cash_flow bao gồm cả dữ liệu quý và cả năm. Dữ liệu cả năm được đánh dấu bằng quarter = 5 hoặc is_annual = TRUE
+-- 4.3. Fact Cash Flow
 CREATE TABLE dwh.fact_cash_flow (
     date_key INT NOT NULL REFERENCES dwh.dim_date(date_key),
     company_key INT NOT NULL REFERENCES dwh.dim_company(company_key),
@@ -259,12 +196,11 @@ CREATE TABLE dwh.fact_cash_flow (
     PRIMARY KEY (date_key, company_key, is_annual)
 );
 
--- Nạp dữ liệu từ bảng cash_flow, thực hiện JOIN để lấy company_key và date_key từ dim_date
 INSERT INTO dwh.fact_cash_flow (date_key, company_key, is_annual, invest_cost, from_invest, from_financial, from_sale, free_cash_flow)
 SELECT
     d.date_key,
     c.company_key,
-    (CASE WHEN cf.quarter = 5 THEN TRUE ELSE FALSE END) AS is_annual,
+    (CASE WHEN cf.quarter = 5 THEN TRUE ELSE FALSE END),
     cf.invest_cost, cf.from_invest, cf.from_financial, cf.from_sale, cf.free_cash_flow
 FROM public.cash_flow cf
 JOIN dwh.dim_company c ON cf.ticker = c.ticker
@@ -277,13 +213,9 @@ JOIN dwh.dim_date d ON d.full_date = (
 )
 WHERE cf.quarter IN (1, 2, 3, 4, 5)
 ON CONFLICT (date_key, company_key, is_annual) DO UPDATE SET
-    invest_cost = EXCLUDED.invest_cost,
-    from_invest = EXCLUDED.from_invest,
-    from_financial = EXCLUDED.from_financial,
-    from_sale = EXCLUDED.from_sale,
-    free_cash_flow = EXCLUDED.free_cash_flow;
+    invest_cost = EXCLUDED.invest_cost, from_invest = EXCLUDED.from_invest, from_financial = EXCLUDED.from_financial, from_sale = EXCLUDED.from_sale, free_cash_flow = EXCLUDED.free_cash_flow;
 
--- Income statement: Bảng income_statement bao gồm cả dữ liệu quý và cả năm. Dữ liệu cả năm được đánh dấu bằng is_annual = TRUE
+-- 4.4. Fact Income Statement
 CREATE TABLE dwh.fact_income_statement (
     date_key INT NOT NULL REFERENCES dwh.dim_date(date_key),
     company_key INT NOT NULL REFERENCES dwh.dim_company(company_key),
@@ -297,12 +229,11 @@ CREATE TABLE dwh.fact_income_statement (
     PRIMARY KEY (date_key, company_key, is_annual)
 );
 
--- Nạp dữ liệu từ bảng income_statement, thực hiện JOIN để lấy company_key và date_key từ dim_date
 INSERT INTO dwh.fact_income_statement (date_key, company_key, is_annual, revenue, year_revenue_growth, operation_expense, operation_profit, year_operation_profit_growth, pre_tax_profit, post_tax_profit, share_holder_income, year_share_holder_income_growth, invest_profit, service_profit, other_profit, provision_expense, operation_income, quarter_revenue_growth, quarter_operation_profit_growth, quarter_share_holder_income_growth)
 SELECT
     d.date_key,
     c.company_key,
-    (CASE WHEN i.quarter = 5 THEN TRUE ELSE FALSE END) AS is_annual,
+    (CASE WHEN i.quarter = 5 THEN TRUE ELSE FALSE END),
     i.revenue, i.year_revenue_growth, i.operation_expense, i.operation_profit, i.year_operation_profit_growth, i.pre_tax_profit, i.post_tax_profit, i.share_holder_income, i.year_share_holder_income_growth, i.invest_profit, i.service_profit, i.other_profit, i.provision_expense, i.operation_income, i.quarter_revenue_growth, i.quarter_operation_profit_growth, i.quarter_share_holder_income_growth
 FROM public.income_statement i
 JOIN dwh.dim_company c ON i.ticker = c.ticker
@@ -315,25 +246,9 @@ JOIN dwh.dim_date d ON d.full_date = (
 )
 WHERE i.quarter IN (1, 2, 3, 4, 5)
 ON CONFLICT (date_key, company_key, is_annual) DO UPDATE SET
-    revenue = EXCLUDED.revenue,
-    year_revenue_growth = EXCLUDED.year_revenue_growth,
-    operation_expense = EXCLUDED.operation_expense,
-    operation_profit = EXCLUDED.operation_profit,
-    year_operation_profit_growth = EXCLUDED.year_operation_profit_growth,
-    pre_tax_profit = EXCLUDED.pre_tax_profit,
-    post_tax_profit = EXCLUDED.post_tax_profit,
-    share_holder_income = EXCLUDED.share_holder_income,
-    year_share_holder_income_growth = EXCLUDED.year_share_holder_income_growth,
-    invest_profit = EXCLUDED.invest_profit,
-    service_profit = EXCLUDED.service_profit,
-    other_profit = EXCLUDED.other_profit,
-    provision_expense = EXCLUDED.provision_expense,
-    operation_income = EXCLUDED.operation_income,
-    quarter_revenue_growth = EXCLUDED.quarter_revenue_growth,
-    quarter_operation_profit_growth = EXCLUDED.quarter_operation_profit_growth,
-    quarter_share_holder_income_growth = EXCLUDED.quarter_share_holder_income_growth;
+    revenue = EXCLUDED.revenue, year_revenue_growth = EXCLUDED.year_revenue_growth, operation_expense = EXCLUDED.operation_expense, operation_profit = EXCLUDED.operation_profit, year_operation_profit_growth = EXCLUDED.year_operation_profit_growth, pre_tax_profit = EXCLUDED.pre_tax_profit, post_tax_profit = EXCLUDED.post_tax_profit, share_holder_income = EXCLUDED.share_holder_income, year_share_holder_income_growth = EXCLUDED.year_share_holder_income_growth, invest_profit = EXCLUDED.invest_profit, service_profit = EXCLUDED.service_profit, other_profit = EXCLUDED.other_profit, provision_expense = EXCLUDED.provision_expense, operation_income = EXCLUDED.operation_income, quarter_revenue_growth = EXCLUDED.quarter_revenue_growth, quarter_operation_profit_growth = EXCLUDED.quarter_operation_profit_growth, quarter_share_holder_income_growth = EXCLUDED.quarter_share_holder_income_growth;
 
--- Bảng ratio: Bảng ratio bao gồm cả dữ liệu quý và cả năm. Dữ liệu cả năm được đánh dấu bằng is_annual = TRUE
+-- 4.5. Fact Ratio
 CREATE TABLE dwh.fact_ratio (
     date_key INT NOT NULL REFERENCES dwh.dim_date(date_key),
     company_key INT NOT NULL REFERENCES dwh.dim_company(company_key),
@@ -351,12 +266,11 @@ CREATE TABLE dwh.fact_ratio (
     PRIMARY KEY (date_key, company_key, is_annual)
 );
 
--- Nạp dữ liệu từ bảng ratio, thực hiện JOIN để lấy company_key và date_key từ dim_date
 INSERT INTO dwh.fact_ratio (date_key, company_key, is_annual, price_to_earning, price_to_book, dividend, roe, roa, earning_per_share, book_value_per_share, interest_margin, non_interest_on_toi, bad_debt_percentage, provision_on_bad_debt, cost_of_financing, equity_on_total_asset, equity_on_loan, cost_to_income, equity_on_liability, eps_change, asset_on_equity, pre_provision_on_toi, post_tax_on_toi, loan_on_earn_asset, loan_on_asset, loan_on_deposit, deposit_on_earn_asset, bad_debt_on_asset, liquidity_on_liability, payable_on_equity, cancel_debt, book_value_per_share_change, credit_growth)
 SELECT
     d.date_key,
     c.company_key,
-    (CASE WHEN r.quarter = 5 THEN TRUE ELSE FALSE END) AS is_annual,
+    (CASE WHEN r.quarter = 5 THEN TRUE ELSE FALSE END),
     r.price_to_earning, r.price_to_book, r.dividend, r.roe, r.roa, r.earning_per_share, r.book_value_per_share, r.interest_margin, r.non_interest_on_toi, r.bad_debt_percentage, r.provision_on_bad_debt, r.cost_of_financing, r.equity_on_total_asset, r.equity_on_loan, r.cost_to_income, r.equity_on_liability, r.eps_change, r.asset_on_equity, r.pre_provision_on_toi, r.post_tax_on_toi, r.loan_on_earn_asset, r.loan_on_asset, r.loan_on_deposit, r.deposit_on_earn_asset, r.bad_debt_on_asset, r.liquidity_on_liability, r.payable_on_equity, r.cancel_debt, r.book_value_per_share_change, r.credit_growth
 FROM public.ratio r
 JOIN dwh.dim_company c ON r.ticker = c.ticker
@@ -369,40 +283,9 @@ JOIN dwh.dim_date d ON d.full_date = (
 )
 WHERE r.quarter IN (1, 2, 3, 4, 5)
 ON CONFLICT (date_key, company_key, is_annual) DO UPDATE SET
-    price_to_earning = EXCLUDED.price_to_earning,
-    price_to_book = EXCLUDED.price_to_book,
-    dividend = EXCLUDED.dividend,
-    roe = EXCLUDED.roe,
-    roa = EXCLUDED.roa,
-    earning_per_share = EXCLUDED.earning_per_share,
-    book_value_per_share = EXCLUDED.book_value_per_share,
-    interest_margin = EXCLUDED.interest_margin,
-    non_interest_on_toi = EXCLUDED.non_interest_on_toi,
-    bad_debt_percentage = EXCLUDED.bad_debt_percentage,
-    provision_on_bad_debt = EXCLUDED.provision_on_bad_debt,
-    cost_of_financing = EXCLUDED.cost_of_financing,
-    equity_on_total_asset = EXCLUDED.equity_on_total_asset,
-    equity_on_loan = EXCLUDED.equity_on_loan,
-    cost_to_income = EXCLUDED.cost_to_income,
-    equity_on_liability = EXCLUDED.equity_on_liability,
-    eps_change = EXCLUDED.eps_change,
-    asset_on_equity = EXCLUDED.asset_on_equity,
-    pre_provision_on_toi = EXCLUDED.pre_provision_on_toi,
-    post_tax_on_toi = EXCLUDED.post_tax_on_toi,
-    loan_on_earn_asset = EXCLUDED.loan_on_earn_asset,
-    loan_on_asset = EXCLUDED.loan_on_asset,
-    loan_on_deposit = EXCLUDED.loan_on_deposit,
-    deposit_on_earn_asset = EXCLUDED.deposit_on_earn_asset,
-    bad_debt_on_asset = EXCLUDED.bad_debt_on_asset,
-    liquidity_on_liability = EXCLUDED.liquidity_on_liability,
-    payable_on_equity = EXCLUDED.payable_on_equity,
-    cancel_debt = EXCLUDED.cancel_debt,
-    book_value_per_share_change = EXCLUDED.book_value_per_share_change,
-    credit_growth = EXCLUDED.credit_growth;
+    price_to_earning = EXCLUDED.price_to_earning, price_to_book = EXCLUDED.price_to_book, dividend = EXCLUDED.dividend, roe = EXCLUDED.roe, roa = EXCLUDED.roa, earning_per_share = EXCLUDED.earning_per_share, book_value_per_share = EXCLUDED.book_value_per_share, interest_margin = EXCLUDED.interest_margin, non_interest_on_toi = EXCLUDED.non_interest_on_toi, bad_debt_percentage = EXCLUDED.bad_debt_percentage, provision_on_bad_debt = EXCLUDED.provision_on_bad_debt, cost_of_financing = EXCLUDED.cost_of_financing, equity_on_total_asset = EXCLUDED.equity_on_total_asset, equity_on_loan = EXCLUDED.equity_on_loan, cost_to_income = EXCLUDED.cost_to_income, equity_on_liability = EXCLUDED.equity_on_liability, eps_change = EXCLUDED.eps_change, asset_on_equity = EXCLUDED.asset_on_equity, pre_provision_on_toi = EXCLUDED.pre_provision_on_toi, post_tax_on_toi = EXCLUDED.post_tax_on_toi, loan_on_earn_asset = EXCLUDED.loan_on_earn_asset, loan_on_asset = EXCLUDED.loan_on_asset, loan_on_deposit = EXCLUDED.loan_on_deposit, deposit_on_earn_asset = EXCLUDED.deposit_on_earn_asset, bad_debt_on_asset = EXCLUDED.bad_debt_on_asset, liquidity_on_liability = EXCLUDED.liquidity_on_liability, payable_on_equity = EXCLUDED.payable_on_equity, cancel_debt = EXCLUDED.cancel_debt, book_value_per_share_change = EXCLUDED.book_value_per_share_change, credit_growth = EXCLUDED.credit_growth;
 
--- =========================
--- Bảng log cho ETL Trigger
--- =========================
+-- 4.6. Bảng log
 CREATE TABLE IF NOT EXISTS dwh.etl_trigger_log (
     log_id SERIAL PRIMARY KEY,
     trigger_name VARCHAR(100),
