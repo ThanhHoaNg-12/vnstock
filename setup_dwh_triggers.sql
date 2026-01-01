@@ -2,7 +2,7 @@
 -- PHẦN 1: CÁC HÀM TIỆN ÍCH VÀ HÀM XỬ LÝ (TRIGGER FUNCTIONS)
 -- ==================================================
 
--- 1.0. Log function
+-- 1.0. Log function (Ghi log lỗi hoặc sự kiện ETL)
 CREATE OR REPLACE FUNCTION dwh.log_etl_event(
     p_trigger_name VARCHAR,
     p_source_table VARCHAR,
@@ -16,7 +16,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 1.1. Get quarter end date key
+-- 1.1. Get quarter end date key (Tính toán ngày cuối quý để lấy DateKey)
 CREATE OR REPLACE FUNCTION dwh.get_quarter_end_date_key(p_year INT, p_quarter INT)
 RETURNS INT AS $$
 DECLARE
@@ -24,12 +24,16 @@ DECLARE
     v_quarter_end_date DATE;
 BEGIN
     IF p_quarter NOT IN (1, 2, 3, 4, 5) THEN RETURN NULL; END IF;
+    
+    -- Xác định ngày cuối quý
     v_quarter_end_date := CASE
         WHEN p_quarter = 1 THEN make_date(p_year, 3, 31)
         WHEN p_quarter = 2 THEN make_date(p_year, 6, 30)
         WHEN p_quarter = 3 THEN make_date(p_year, 9, 30)
         WHEN p_quarter IN (4, 5) THEN make_date(p_year, 12, 31)
     END;
+
+    -- Lookup date_key từ bảng dim_date (đã gộp)
     SELECT date_key INTO v_date_key FROM dwh.dim_date WHERE full_date = v_quarter_end_date LIMIT 1;
     RETURN v_date_key;
 END;
@@ -78,6 +82,7 @@ BEGIN
         PERFORM dwh.log_etl_event('etl_ratio_trigger_func', 'ratio', NEW.ticker, 'NULL ticker/year/quarter', to_jsonb(NEW));
         RETURN NEW;
     END IF;
+    
     v_date_key := dwh.get_quarter_end_date_key(NEW.year, NEW.quarter);
     SELECT company_key INTO v_company_key FROM dwh.dim_company WHERE ticker = NEW.ticker LIMIT 1;
     
@@ -195,7 +200,7 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$ LANGUAGE plpgsql;
 
--- 1.7. SYNC DIM COMPANY (Cập nhật - Insert thẳng Exchange và Industry)
+-- 1.7. SYNC DIM COMPANY (Cập nhật thẳng vào dim_company đã gộp)
 CREATE OR REPLACE FUNCTION dwh.sync_dim_company()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -204,14 +209,19 @@ BEGIN
         RETURN NEW;
     END IF;
 
+    -- Upsert dim_company với đầy đủ các cột mới và ánh xạ sàn/ngành
     INSERT INTO dwh.dim_company (
         ticker, short_name, company_type, established_year, 
         no_employees, no_shareholders, website, 
+        foreign_percent, outstanding_share, issue_share, stock_rating,
+        delta_in_week, delta_in_month, delta_in_year,
         exchange_code, industry_name, industry_id, industry_id_v2
     )
     VALUES (
         NEW.ticker, NEW.short_name, NEW.company_type, NEW.established_year, 
         NEW.no_employees, NEW.no_shareholders, NEW.website, 
+        NEW.foreign_percent, NEW.outstanding_share, NEW.issue_share, NEW.stock_rating,
+        NEW.delta_in_week, NEW.delta_in_month, NEW.delta_in_year,
         NEW.exchange, NEW.industry, NEW.industry_id, NEW.industry_id_v2
     )
     ON CONFLICT (ticker) DO UPDATE SET
@@ -221,6 +231,13 @@ BEGIN
         no_employees = EXCLUDED.no_employees,
         no_shareholders = EXCLUDED.no_shareholders,
         website = EXCLUDED.website,
+        foreign_percent = EXCLUDED.foreign_percent,
+        outstanding_share = EXCLUDED.outstanding_share,
+        issue_share = EXCLUDED.issue_share,
+        stock_rating = EXCLUDED.stock_rating,
+        delta_in_week = EXCLUDED.delta_in_week,
+        delta_in_month = EXCLUDED.delta_in_month,
+        delta_in_year = EXCLUDED.delta_in_year,
         exchange_code = EXCLUDED.exchange_code,
         industry_name = EXCLUDED.industry_name,
         industry_id = EXCLUDED.industry_id,

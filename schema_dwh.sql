@@ -2,65 +2,41 @@
 CREATE SCHEMA IF NOT EXISTS dwh;
 
 -- ==================================================================
--- BƯỚC 1: XÓA SẠCH CÁC BẢNG CŨ ĐỂ LÀM LẠI
+-- BƯỚC 1: XÓA SẠCH CÁC BẢNG CŨ
 -- ==================================================================
 DROP TABLE IF EXISTS dwh.fact_daily_price CASCADE;
 DROP TABLE IF EXISTS dwh.fact_balance_sheet CASCADE;
 DROP TABLE IF EXISTS dwh.fact_income_statement CASCADE;
 DROP TABLE IF EXISTS dwh.fact_cash_flow CASCADE;
 DROP TABLE IF EXISTS dwh.fact_ratio CASCADE;
-DROP TABLE IF EXISTS dwh.dim_company CASCADE; -- Xóa bảng company cũ
+DROP TABLE IF EXISTS dwh.dim_company CASCADE; 
 DROP TABLE IF EXISTS dwh.dim_date CASCADE;
+-- Xóa luôn 2 bảng này vì đã gộp vào dim_date
 DROP TABLE IF EXISTS dwh.dim_quarter CASCADE;
 DROP TABLE IF EXISTS dwh.dim_year CASCADE;
 DROP TABLE IF EXISTS dwh.etl_trigger_log CASCADE;
 DROP TABLE IF EXISTS dwh.dim_exchange CASCADE;
 DROP TABLE IF EXISTS dwh.dim_industry CASCADE;
 
--- Lưu ý: Đã xóa dim_exchange và dim_industry vì không dùng nữa
-
 -- ==================================================================
--- BƯỚC 2: TẠO VÀ NẠP DIMENSION THỜI GIAN (YEAR, QUARTER, DATE)
+-- BƯỚC 2: TẠO VÀ NẠP DIMENSION THỜI GIAN (GỘP DATE, QUARTER, YEAR)
 -- ==================================================================
-CREATE TABLE dwh.dim_year (
-    year_key INT PRIMARY KEY,
-    year_number INT NOT NULL,
-    is_leap_year BOOLEAN NOT NULL
-);
-
-INSERT INTO dwh.dim_year (year_key, year_number, is_leap_year)
-SELECT 
-    y AS year_key,
-    y AS year_number,
-    (y % 4 = 0 AND y % 100 <> 0) OR (y % 400 = 0) AS is_leap_year
-FROM generate_series(2000, 3000) AS y;
-
-CREATE TABLE dwh.dim_quarter (
-    quarter_key INT PRIMARY KEY,
-    year_key INT NOT NULL REFERENCES dwh.dim_year(year_key),
-    quarter_number INT NOT NULL,
-    quarter_name VARCHAR(20) NOT NULL
-);
-
-INSERT INTO dwh.dim_quarter (quarter_key, year_key, quarter_number, quarter_name)
-SELECT 
-    (y.year_number::TEXT || q::TEXT)::INT AS quarter_key, 
-    y.year_key,
-    q AS quarter_number,
-    'Quý ' || q || ' ' || y.year_number AS quarter_name
-FROM dwh.dim_year y
-CROSS JOIN generate_series(1, 4) AS q
-ORDER BY 1;
-
 CREATE TABLE dwh.dim_date (
     date_key INT PRIMARY KEY,
     full_date DATE NOT NULL UNIQUE,
-    quarter_key INT NOT NULL REFERENCES dwh.dim_quarter(quarter_key),
+    -- Thông tin Ngày
     day_of_week INT NOT NULL,
     day_name VARCHAR(20) NOT NULL,
     day_of_month INT NOT NULL,
     month INT NOT NULL,
     month_name VARCHAR(20) NOT NULL,
+    -- Thông tin Quý (Đã gộp từ dim_quarter cũ)
+    quarter INT NOT NULL,
+    quarter_name VARCHAR(20) NOT NULL, -- Ví dụ: Quý 1 2024
+    -- Thông tin Năm (Đã gộp từ dim_year cũ)
+    year INT NOT NULL,
+    is_leap_year BOOLEAN NOT NULL,
+    -- Flags
     is_weekend BOOLEAN NOT NULL,
     is_trading_day BOOLEAN NOT NULL DEFAULT TRUE
 );
@@ -69,60 +45,64 @@ INSERT INTO dwh.dim_date
 SELECT
     TO_CHAR(datum, 'yyyymmdd')::INT AS date_key,
     datum::DATE AS full_date,
-    (EXTRACT(YEAR FROM datum)::TEXT || EXTRACT(QUARTER FROM datum)::TEXT)::INT AS quarter_key,
     EXTRACT(ISODOW FROM datum) AS day_of_week,
     TO_CHAR(datum, 'Day') AS day_name,
     EXTRACT(DAY FROM datum) AS day_of_month,
     EXTRACT(MONTH FROM datum) AS month,
     TO_CHAR(datum, 'Month') AS month_name,
+    -- Gộp Quarter
+    EXTRACT(QUARTER FROM datum)::INT AS quarter,
+    'Quý ' || EXTRACT(QUARTER FROM datum)::INT || ' ' || EXTRACT(YEAR FROM datum)::INT AS quarter_name,
+    -- Gộp Year
+    EXTRACT(YEAR FROM datum)::INT AS year,
+    ((EXTRACT(YEAR FROM datum)::INT % 4 = 0 AND EXTRACT(YEAR FROM datum)::INT % 100 <> 0) OR (EXTRACT(YEAR FROM datum)::INT % 400 = 0)) AS is_leap_year,
+    -- Weekend check
     CASE WHEN EXTRACT(ISODOW FROM datum) IN (6, 7) THEN TRUE ELSE FALSE END AS is_weekend
 FROM generate_series('2000-01-01'::timestamp, '3000-01-01'::timestamp, '1 day'::interval) AS datum
 ORDER BY 1;
 
 CREATE INDEX idx_dim_date_full_date ON dwh.dim_date(full_date);
+CREATE INDEX idx_dim_date_year ON dwh.dim_date(year);    -- Index cho cột year mới
+CREATE INDEX idx_dim_date_quarter ON dwh.dim_date(quarter); -- Index cho cột quarter mới
 
 -- ==================================================================
--- BƯỚC 3: TẠO BẢNG DIM_COMPANY (ĐÃ GỘP SÀN VÀ NGÀNH)
+-- BƯỚC 3: TẠO BẢNG DIM_COMPANY (GIỮ NGUYÊN)
 -- ==================================================================
 CREATE TABLE dwh.dim_company (
-    company_key SERIAL PRIMARY KEY,     -- Khóa tự tăng
-    ticker VARCHAR(10) NOT NULL UNIQUE, -- Business Key
+    company_key SERIAL PRIMARY KEY,
+    ticker VARCHAR(10) NOT NULL UNIQUE,
     short_name VARCHAR(500),
     company_type VARCHAR(30),
     established_year INT,
     no_employees INT,
     no_shareholders BIGINT,
     website VARCHAR(500),
-    
-    -- Các cột mới được gộp vào từ Exchange và Industry
-    exchange_code VARCHAR(10),  -- HOSE, HNX...
-    industry_name VARCHAR(100), -- Tên ngành
+    exchange_code VARCHAR(10),
+    industry_name VARCHAR(100),
     industry_id INT,
-    industry_id_v2 INT
+    industry_id_v2 INT,
+    foreign_percent FLOAT,
+    outstanding_share FLOAT,
+    issue_share FLOAT,
+    stock_rating FLOAT,
+    delta_in_week FLOAT,
+    delta_in_month FLOAT,
+    delta_in_year FLOAT
 );
 
--- Nạp dữ liệu ban đầu từ public.company
 INSERT INTO dwh.dim_company (
-    ticker, short_name, company_type, established_year, 
-    no_employees, no_shareholders, website, 
-    exchange_code, industry_name, industry_id, industry_id_v2
+    ticker, short_name, company_type, established_year, no_employees, no_shareholders, website, 
+    exchange_code, industry_name, industry_id, industry_id_v2,
+    foreign_percent, outstanding_share, issue_share, stock_rating, delta_in_week, delta_in_month, delta_in_year
 )
-SELECT
-    ticker,
-    short_name,
-    company_type,
-    established_year,
-    no_employees,
-    no_shareholders,
-    website,
-    exchange,       -- Lấy thẳng từ bảng gốc
-    industry,       -- Lấy thẳng từ bảng gốc
-    industry_id,
-    industry_id_v2
+SELECT 
+    ticker, short_name, company_type, established_year, no_employees, no_shareholders, website, 
+    exchange, industry, industry_id, industry_id_v2,
+    foreign_percent, outstanding_share, issue_share, stock_rating, delta_in_week, delta_in_month, delta_in_year
 FROM public.company;
 
 -- ==================================================================
--- BƯỚC 4: TẠO CÁC BẢNG FACT (Tham chiếu tới dim_company mới)
+-- BƯỚC 4: TẠO CÁC BẢNG FACT (GIỮ NGUYÊN)
 -- ==================================================================
 
 -- 4.1. Fact Daily Price

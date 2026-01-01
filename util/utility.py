@@ -262,7 +262,7 @@ def fixed_delay_api_call(function, **kwargs) -> pd.DataFrame:
     value = None
     # Try 3 times. If all fails, return None. If one succeeds, break the loop
     for i in range(3):
-        start = time.perf_counter() + 1
+        # start = time.perf_counter() + 1
         try:
             value = function(**kwargs)
         except Exception as e:
@@ -270,11 +270,11 @@ def fixed_delay_api_call(function, **kwargs) -> pd.DataFrame:
             if i < 2:
                 time.sleep(60 + random.uniform(0, 5))
         else:
-            diff = time.perf_counter() - start
-            if diff > 0:
-                time.sleep(diff + 1)
-            else:
-                time.sleep(1)
+            # diff = time.perf_counter() - start
+            # if diff > 0:
+            #     time.sleep(diff + 1)
+            # else:
+            #     time.sleep(1)
             break
 
     return value
